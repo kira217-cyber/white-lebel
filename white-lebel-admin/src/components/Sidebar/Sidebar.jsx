@@ -2,16 +2,19 @@ import React, { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  LayoutDashboard,
+  ChevronDown,
+  Gamepad2,
   Globe2,
-  PlusCircle,
-  Settings,
-  UserCircle,
+  LayoutDashboard,
+  ListPlus,
   LogOut,
   Menu,
-  X,
+  PlusCircle,
   ShieldCheck,
   Sparkles,
+  Trophy,
+  UserCircle,
+  X,
 } from "lucide-react";
 
 import { logoutMasterAdmin } from "../../features/auth/authSlice";
@@ -33,13 +36,37 @@ const navItems = [
     path: "/add-site",
     icon: PlusCircle,
   },
+];
 
+const gameItems = [
+  {
+    label: "Add Category",
+    path: "/rb-add-category",
+    icon: ListPlus,
+  },
+  {
+    label: "Add Provider",
+    path: "/rb-add-provider",
+    icon: Globe2,
+  },
+  {
+    label: "Add Game",
+    path: "/rb-add-game",
+    icon: Gamepad2,
+  },
+  {
+    label: "Add Live Game",
+    path: "/rb-add-live-game",
+    icon: Trophy,
+  },
 ];
 
 const SidebarContent = ({ onClose }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const admin = useSelector(selectMasterAdmin);
+
+  const [gamesOpen, setGamesOpen] = useState(true);
 
   const handleLogout = () => {
     dispatch(logoutMasterAdmin());
@@ -51,6 +78,13 @@ const SidebarContent = ({ onClose }) => {
       isActive
         ? "border border-cyan-300/30 bg-cyan-300/15 text-cyan-100 shadow-[0_0_30px_rgba(34,211,238,0.12)]"
         : "text-slate-300 hover:bg-white/10 hover:text-white"
+    }`;
+
+  const subLinkClass = ({ isActive }) =>
+    `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-all ${
+      isActive
+        ? "border border-emerald-300/25 bg-emerald-300/15 text-emerald-100"
+        : "text-slate-400 hover:bg-white/10 hover:text-white"
     }`;
 
   return (
@@ -121,6 +155,49 @@ const SidebarContent = ({ onClose }) => {
             </NavLink>
           );
         })}
+
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+          <button
+            type="button"
+            onClick={() => setGamesOpen((prev) => !prev)}
+            className={`flex w-full cursor-pointer items-center justify-between rounded-2xl px-4 py-3 text-sm font-bold transition-all ${
+              gamesOpen
+                ? "bg-cyan-300/10 text-cyan-100"
+                : "text-slate-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <Gamepad2 className="h-5 w-5" />
+              RB Games
+            </span>
+
+            <ChevronDown
+              className={`h-5 w-5 transition-transform ${
+                gamesOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {gamesOpen && (
+            <div className="mt-2 space-y-1 border-l border-cyan-300/20 pl-3">
+              {gameItems.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={onClose}
+                    className={subLinkClass}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </nav>
 
       <div className="border-t border-white/10 p-4">

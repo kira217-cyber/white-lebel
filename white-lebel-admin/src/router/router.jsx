@@ -10,6 +10,10 @@ import PrivateRoute from "../PrivateRoute/PrivateRoute";
 import Profile from "../pages/Profile/Profile";
 import AddSite from "../pages/AddSite/AddSite";
 import AllSite from "../pages/AllSite/AllSite";
+import RBAddGame from "../pages/RBGameRelatedPages/RBAddGame";
+import RBAddLiveGame from "../pages/RBGameRelatedPages/RBAddLiveGame";
+import RBAddProvider from "../pages/RBGameRelatedPages/RBAddProvider";
+import RBAddCategory from "../pages/RBGameRelatedPages/RBAddCategory";
 
 export const routes = createBrowserRouter([
   {
@@ -48,6 +52,22 @@ export const routes = createBrowserRouter([
           {
             path: "all-site",
             element: <AllSite />,
+          },
+          {
+            path: "rb-add-game",
+            element: <RBAddGame />,
+          },
+          {
+            path: "rb-add-live-game",
+            element: <RBAddLiveGame />,
+          },
+          {
+            path: "rb-add-provider",
+            element: <RBAddProvider />,
+          },
+          {
+            path: "rb-add-category",
+            element: <RBAddCategory />,
           }
         ],
       },
