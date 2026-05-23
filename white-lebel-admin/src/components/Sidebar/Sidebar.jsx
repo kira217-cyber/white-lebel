@@ -38,7 +38,7 @@ const navItems = [
   },
 ];
 
-const gameItems = [
+const gameItemsRB = [
   {
     label: "Add Category",
     path: "/rb-add-category",
@@ -61,12 +61,36 @@ const gameItems = [
   },
 ];
 
+const gameItemsMYGP = [
+  {
+    label: "Add Category",
+    path: "/my-gp-add-category",
+    icon: ListPlus,
+  },
+  {
+    label: "Add Provider",
+    path: "/my-gp-add-provider",
+    icon: Globe2,
+  },
+  {
+    label: "Add Game",
+    path: "/my-gp-add-game",
+    icon: Gamepad2,
+  },
+  {
+    label: "Add Live Game",
+    path: "/my-gp-add-live-game",
+    icon: Trophy,
+  },
+];
+
 const SidebarContent = ({ onClose }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const admin = useSelector(selectMasterAdmin);
 
-  const [gamesOpen, setGamesOpen] = useState(true);
+  const [gamesOpenRB, setGamesOpenRB] = useState(true);
+  const [gamesOpenMYGP, setGamesOpenMYGP] = useState(true);
 
   const handleLogout = () => {
     dispatch(logoutMasterAdmin());
@@ -159,9 +183,9 @@ const SidebarContent = ({ onClose }) => {
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
           <button
             type="button"
-            onClick={() => setGamesOpen((prev) => !prev)}
+            onClick={() => setGamesOpenRB((prev) => !prev)}
             className={`flex w-full cursor-pointer items-center justify-between rounded-2xl px-4 py-3 text-sm font-bold transition-all ${
-              gamesOpen
+              gamesOpenRB
                 ? "bg-cyan-300/10 text-cyan-100"
                 : "text-slate-300 hover:bg-white/10 hover:text-white"
             }`}
@@ -170,17 +194,57 @@ const SidebarContent = ({ onClose }) => {
               <Gamepad2 className="h-5 w-5" />
               RB Games
             </span>
-
             <ChevronDown
               className={`h-5 w-5 transition-transform ${
-                gamesOpen ? "rotate-180" : ""
+                gamesOpenRB ? "rotate-180" : ""
               }`}
             />
           </button>
 
-          {gamesOpen && (
+          {gamesOpenRB && (
             <div className="mt-2 space-y-1 border-l border-cyan-300/20 pl-3">
-              {gameItems.map((item) => {
+              {gameItemsRB.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={onClose}
+                    className={subLinkClass}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+          <button
+            type="button"
+            onClick={() => setGamesOpenMYGP((prev) => !prev)}
+            className={`flex w-full cursor-pointer items-center justify-between rounded-2xl px-4 py-3 text-sm font-bold transition-all ${
+              gamesOpenMYGP
+                ? "bg-cyan-300/10 text-cyan-100"
+                : "text-slate-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <Gamepad2 className="h-5 w-5" />
+              MYGP Games
+            </span>
+            <ChevronDown
+              className={`h-5 w-5 transition-transform ${
+                gamesOpenMYGP ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {gamesOpenMYGP && (
+            <div className="mt-2 space-y-1 border-l border-cyan-300/20 pl-3">
+              {gameItemsMYGP.map((item) => {
                 const Icon = item.icon;
 
                 return (

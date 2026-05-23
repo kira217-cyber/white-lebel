@@ -52,6 +52,38 @@ const whiteLabelSiteSchema = new mongoose.Schema(
       index: true,
     },
 
+    // ✅ White label API token
+    apiToken: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+      trim: true,
+      select: false,
+    },
+
+    apiTokenPreview: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    tokenActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+
+    apiTokenLastGeneratedAt: {
+      type: Date,
+      default: Date.now,
+    },
+
+    lastTokenVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+
     lastLoginAt: {
       type: Date,
       default: null,
@@ -63,6 +95,8 @@ const whiteLabelSiteSchema = new mongoose.Schema(
 whiteLabelSiteSchema.index({
   siteName: "text",
   adminEmail: "text",
+  clientUrl: "text",
+  adminLoginUrl: "text",
 });
 
 const WhiteLabelSite = mongoose.model("WhiteLabelSite", whiteLabelSiteSchema);

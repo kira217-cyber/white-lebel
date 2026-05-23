@@ -8,7 +8,7 @@ import siteRoutes from "./routes/siteRoutes.js";
 import masterRBGameCategoryRoutes from "./routes/masterRBGameCategoryRoutes.js";
 import masterRBGameProviderRoutes from "./routes/masterRBGameProviderRoutes.js";
 import masterRBGameRoutes from "./routes/masterRBGameRoutes.js";
-
+import whiteLabelGamePublicRoutes from "./routes/whiteLabelGamePublicRoutes.js";
 
 dotenv.config();
 
@@ -33,6 +33,8 @@ app.use("/api/master/sites", siteRoutes);
 app.use("/api/master/rb-game-categories", masterRBGameCategoryRoutes);
 app.use("/api/master/rb-game-providers", masterRBGameProviderRoutes);
 app.use("/api/master/rb-games", masterRBGameRoutes);
+
+app.use("/api/white-label", whiteLabelGamePublicRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
