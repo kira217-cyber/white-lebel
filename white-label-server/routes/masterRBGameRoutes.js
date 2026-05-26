@@ -1,5 +1,6 @@
 import express from "express";
 import mongoose from "mongoose";
+import axios from "axios";
 
 import MasterRBGame from "../models/MasterRBGame.js";
 import MasterRBGameCategory from "../models/MasterRBGameCategory.js";
@@ -10,6 +11,12 @@ import { protectMasterAdmin } from "../middleware/authMiddleware.js";
 import { errorResponse, successResponse } from "../utils/response.js";
 
 const router = express.Router();
+
+const ORACLE_GAME_API_BASE =
+  process.env.ORACLE_GAME_API_BASE || "https://oraclegames.net/api/game";
+
+const ORACLE_GAME_DATA_KEY =
+  process.env.ORACLE_GAME_DATA_KEY || "1189baca156e1bbbecc3b26651a63565";
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
@@ -22,7 +29,81 @@ const filePath = (file) => {
   return `/uploads/${file.filename}`;
 };
 
-/* CREATE GAME */
+const cleanText = (value = "") => String(value || "").trim();
+
+const cleanProviderCode = (value = "") => cleanText(value).toUpperCase();
+
+const validOracleImageTypes = ["thumbnail", "height", "original"];
+
+const cleanOracleImageType = (value) => {
+  if (validOracleImageTypes.includes(value)) return value;
+  return "thumbnail";
+};
+
+const normalizeOracleGames = (data) => {
+  const games = Array.isArray(data?.games) ? data.games : [];
+
+  return games
+    .filter((game) => game?.game_uid)
+    .map((game) => ({
+      name: game.name || "",
+      game_uid: String(game.game_uid || "").trim(),
+      provider: game.provider || "",
+      category: game.category || "",
+      status: game.status,
+      images: {
+        original: game.original || "",
+        height: game.height || "",
+        thumbnail: game.thumbnail || "",
+      },
+      raw: game,
+    }));
+};
+
+/* ======================================================
+   FETCH ORACLE GAMES BY PROVIDER CODE
+   GET /api/master/rb-games/oracle/JDB
+====================================================== */
+
+router.get("/oracle/:providerCode", protectMasterAdmin, async (req, res) => {
+  try {
+    const providerCode = cleanProviderCode(req.params.providerCode);
+
+    if (!providerCode) {
+      return errorResponse(res, "providerCode is required.", 400);
+    }
+
+    const response = await axios.get(
+      `${ORACLE_GAME_API_BASE}/${providerCode}`,
+      {
+        headers: {
+          "x-oraclegamedata-key": ORACLE_GAME_DATA_KEY,
+        },
+        timeout: 30000,
+      },
+    );
+
+    const normalizedGames = normalizeOracleGames(response.data);
+
+    return successResponse(res, "Oracle games fetched successfully.", {
+      provider: response.data?.provider || null,
+      games: normalizedGames,
+    });
+  } catch (error) {
+    return errorResponse(
+      res,
+      error?.response?.data?.message ||
+        error.message ||
+        "Failed to fetch Oracle games.",
+      500,
+    );
+  }
+});
+
+/* ======================================================
+   CREATE GAME
+====================================================== */
+
 router.post(
   "/",
   protectMasterAdmin,
@@ -32,7 +113,8 @@ router.post(
       const {
         categoryId,
         providerDbId,
-        gameId,
+        gameUId,
+        oracleImageType,
         isHot,
         isNew,
         isJackpot,
@@ -47,8 +129,8 @@ router.post(
         return errorResponse(res, "Valid providerDbId is required.", 400);
       }
 
-      if (!gameId) {
-        return errorResponse(res, "gameId is required.", 400);
+      if (!gameUId) {
+        return errorResponse(res, "gameUId is required.", 400);
       }
 
       const category = await MasterRBGameCategory.findById(categoryId);
@@ -70,9 +152,11 @@ router.post(
         );
       }
 
+      const finalGameUId = cleanText(gameUId);
+
       const exists = await MasterRBGame.findOne({
         providerDbId,
-        gameId: String(gameId).trim(),
+        gameUId: finalGameUId,
       });
 
       if (exists) {
@@ -86,10 +170,12 @@ router.post(
       const game = await MasterRBGame.create({
         categoryId,
         providerDbId,
-        gameId: String(gameId).trim(),
+        gameUId: finalGameUId,
 
-        // Oracle image URL will NOT save.
-        // Only uploaded image path will save.
+        // Oracle image URL save hobe na.
+        oracleImageType: cleanOracleImageType(oracleImageType),
+
+        // Only custom uploaded image save hobe.
         image: req.file ? filePath(req.file) : "",
 
         isHot: toBool(isHot),
@@ -114,13 +200,16 @@ router.post(
   },
 );
 
-/* GET ALL GAMES */
+/* ======================================================
+   GET ALL GAMES
+====================================================== */
+
 router.get("/", protectMasterAdmin, async (req, res) => {
   try {
     const {
       categoryId = "",
       providerDbId = "",
-      gameId = "",
+      gameUId = "",
       status = "",
       isHot = "",
       isNew = "",
@@ -147,8 +236,8 @@ router.get("/", protectMasterAdmin, async (req, res) => {
       query.providerDbId = providerDbId;
     }
 
-    if (gameId) {
-      query.gameId = { $regex: gameId, $options: "i" };
+    if (gameUId) {
+      query.gameUId = { $regex: gameUId, $options: "i" };
     }
 
     if (status) {
@@ -174,7 +263,7 @@ router.get("/", protectMasterAdmin, async (req, res) => {
     const [games, total] = await Promise.all([
       MasterRBGame.find(query)
         .populate("categoryId", "categoryName categoryTitle status")
-        .populate("providerDbId", "providerName providerId status")
+        .populate("providerDbId", "providerName providerCode status")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNum),
@@ -196,12 +285,15 @@ router.get("/", protectMasterAdmin, async (req, res) => {
   }
 });
 
-/* GET SINGLE GAME */
+/* ======================================================
+   GET SINGLE GAME
+====================================================== */
+
 router.get("/:id", protectMasterAdmin, async (req, res) => {
   try {
     const game = await MasterRBGame.findById(req.params.id)
       .populate("categoryId", "categoryName categoryTitle status")
-      .populate("providerDbId", "providerName providerId status");
+      .populate("providerDbId", "providerName providerCode status");
 
     if (!game) {
       return errorResponse(res, "RB game not found.", 404);
@@ -213,7 +305,10 @@ router.get("/:id", protectMasterAdmin, async (req, res) => {
   }
 });
 
-/* UPDATE GAME */
+/* ======================================================
+   UPDATE GAME
+====================================================== */
+
 router.put(
   "/:id",
   protectMasterAdmin,
@@ -226,8 +321,16 @@ router.put(
         return errorResponse(res, "RB game not found.", 404);
       }
 
-      const { categoryId, providerDbId, isHot, isNew, isJackpot, status } =
-        req.body || {};
+      const {
+        categoryId,
+        providerDbId,
+        gameUId,
+        oracleImageType,
+        isHot,
+        isNew,
+        isJackpot,
+        status,
+      } = req.body || {};
 
       if (categoryId !== undefined) {
         if (!isValidObjectId(categoryId)) {
@@ -257,6 +360,34 @@ router.put(
         game.providerDbId = providerDbId;
       }
 
+      if (gameUId !== undefined) {
+        const newGameUId = cleanText(gameUId);
+
+        if (!newGameUId) {
+          return errorResponse(res, "gameUId is required.", 400);
+        }
+
+        const exists = await MasterRBGame.findOne({
+          _id: { $ne: game._id },
+          providerDbId: game.providerDbId,
+          gameUId: newGameUId,
+        });
+
+        if (exists) {
+          return errorResponse(
+            res,
+            "This game already exists under this provider.",
+            400,
+          );
+        }
+
+        game.gameUId = newGameUId;
+      }
+
+      if (oracleImageType !== undefined) {
+        game.oracleImageType = cleanOracleImageType(oracleImageType);
+      }
+
       if (isHot !== undefined) {
         game.isHot = toBool(isHot);
       }
@@ -273,8 +404,6 @@ router.put(
         game.status = status;
       }
 
-      // Only custom upload updates image.
-      // If no file, existing image stays same.
       if (req.file) {
         game.image = filePath(req.file);
       }
@@ -298,7 +427,10 @@ router.put(
   },
 );
 
-/* REMOVE CUSTOM IMAGE ONLY */
+/* ======================================================
+   REMOVE CUSTOM IMAGE ONLY
+====================================================== */
+
 router.patch("/:id/remove-image", protectMasterAdmin, async (req, res) => {
   try {
     const game = await MasterRBGame.findById(req.params.id);
@@ -318,7 +450,10 @@ router.patch("/:id/remove-image", protectMasterAdmin, async (req, res) => {
   }
 });
 
-/* DELETE GAME */
+/* ======================================================
+   DELETE GAME
+====================================================== */
+
 router.delete("/:id", protectMasterAdmin, async (req, res) => {
   try {
     const game = await MasterRBGame.findByIdAndDelete(req.params.id);

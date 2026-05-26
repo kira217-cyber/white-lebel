@@ -19,12 +19,16 @@ import { toast } from "react-toastify";
 import { api } from "../../api/axios";
 
 const API_URL = import.meta.env.VITE_API_URL;
-const ORACLE_PROVIDER_API = "https://api.oraclegames.live/api/providers";
-const ORACLE_PROVIDER_KEY = import.meta.env.VITE_ORACLE_TOKEN;
+
+const ORACLE_PROVIDER_API = "https://oraclegames.net/api/providerlist";
+
+const ORACLE_PROVIDER_KEY =
+  import.meta.env.VITE_ORACLE_GAME_DATA_KEY ||
+  "1189baca156e1bbbecc3b26651a63565";
 
 const emptyForm = {
   categoryId: "",
-  providerId: "",
+  providerCode: "",
   providerName: "",
   providerImage: null,
   providerIcon: null,
@@ -37,6 +41,26 @@ const fileUrl = (path = "") => {
   if (!path) return "";
   if (String(path).startsWith("http")) return path;
   return `${API_URL}${String(path).startsWith("/") ? path : `/${path}`}`;
+};
+
+const cleanText = (value = "") => String(value || "").trim();
+
+const cleanProviderCode = (value = "") => cleanText(value).toUpperCase();
+
+const normalizeOracleProviders = (data) => {
+  const list = Array.isArray(data) ? data : data?.data || data?.providers || [];
+
+  return list
+    .filter((item) => item?.code && item?.name)
+    .map((item) => ({
+      providerCode: cleanProviderCode(item.code),
+      providerName: cleanText(item.name),
+      image: item.image || "",
+      status: item.status,
+      currency: item.currency || "",
+      language: item.language || "",
+      raw: item,
+    }));
 };
 
 const RBAddProvider = () => {
@@ -58,6 +82,7 @@ const RBAddProvider = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [hotFilter, setHotFilter] = useState("");
   const [newFilter, setNewFilter] = useState("");
+  const [syncFilter, setSyncFilter] = useState("");
 
   const inputClass =
     "w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 transition focus:border-cyan-300/60";
@@ -67,6 +92,12 @@ const RBAddProvider = () => {
     const cat = categories.find((c) => c._id === form.categoryId);
     return cat?.categoryName?.en || "";
   }, [categories, form.categoryId]);
+
+  const selectedOracleProvider = useMemo(() => {
+    return oracleProviders.find(
+      (p) => String(p.providerCode) === String(form.providerCode),
+    );
+  }, [oracleProviders, form.providerCode]);
 
   const loadCategories = async () => {
     try {
@@ -88,11 +119,12 @@ const RBAddProvider = () => {
 
       const res = await axios.get(ORACLE_PROVIDER_API, {
         headers: {
-          "x-api-key": ORACLE_PROVIDER_KEY,
+          "x-oraclegamedata-key": ORACLE_PROVIDER_KEY,
         },
       });
 
-      setOracleProviders(res.data?.data || []);
+      const providers = normalizeOracleProviders(res.data);
+      setOracleProviders(providers);
     } catch (error) {
       toast.error(
         error?.response?.data?.message ||
@@ -114,6 +146,7 @@ const RBAddProvider = () => {
           status: statusFilter,
           isHot: hotFilter,
           isNew: newFilter,
+          syncStatus: syncFilter,
           limit: 100,
         },
       });
@@ -134,7 +167,7 @@ const RBAddProvider = () => {
   useEffect(() => {
     loadSavedProviders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.categoryId, search, statusFilter, hotFilter, newFilter]);
+  }, [form.categoryId, search, statusFilter, hotFilter, newFilter, syncFilter]);
 
   useEffect(() => {
     if (form.providerImage instanceof File) {
@@ -173,7 +206,7 @@ const RBAddProvider = () => {
 
     setForm((prev) => ({
       ...prev,
-      providerId: selected?.providerCode || "",
+      providerCode: selected?.providerCode || "",
       providerName: selected?.providerName || "",
     }));
   };
@@ -195,7 +228,7 @@ const RBAddProvider = () => {
 
     setForm({
       categoryId: categoryId || "",
-      providerId: provider.providerId || "",
+      providerCode: provider.providerCode || "",
       providerName: provider.providerName || "",
       providerImage: null,
       providerIcon: null,
@@ -210,8 +243,11 @@ const RBAddProvider = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.categoryId) return toast.error("Please select a category");
-    if (!form.providerId || !form.providerName) {
+    if (!form.categoryId) {
+      return toast.error("Please select a category");
+    }
+
+    if (!form.providerCode || !form.providerName) {
       return toast.error("Please select a provider");
     }
 
@@ -229,8 +265,8 @@ const RBAddProvider = () => {
       const fd = new FormData();
 
       fd.append("categoryId", form.categoryId);
-      fd.append("providerId", form.providerId);
-      fd.append("providerName", form.providerName);
+      fd.append("providerCode", cleanProviderCode(form.providerCode));
+      fd.append("providerName", cleanText(form.providerName));
       fd.append("status", form.status);
       fd.append("isHot", String(Boolean(form.isHot)));
       fd.append("isNew", String(Boolean(form.isNew)));
@@ -284,6 +320,10 @@ const RBAddProvider = () => {
     }
   };
 
+  const handleRefreshOracle = async () => {
+    await loadOracleProviders();
+  };
+
   return (
     <div className="space-y-6 text-white">
       <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.06] p-6 shadow-2xl">
@@ -304,6 +344,7 @@ const RBAddProvider = () => {
 
             <p className="mt-2 max-w-2xl text-sm text-slate-300">
               Add Oracle providers under RB categories from the master panel.
+              Oracle code will be saved as providerCode.
             </p>
           </div>
 
@@ -321,6 +362,20 @@ const RBAddProvider = () => {
                 </p>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={handleRefreshOracle}
+              disabled={oracleLoading}
+              className="mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-4 py-2.5 text-xs font-black text-emerald-100 hover:bg-emerald-300/15 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {oracleLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Reload Oracle
+            </button>
           </div>
         </div>
       </section>
@@ -336,7 +391,7 @@ const RBAddProvider = () => {
                 {editing ? "Update Provider" : "Add Provider"}
               </h2>
               <p className="text-sm text-slate-400">
-                Select category and Oracle provider
+                Select category and Oracle provider.
               </p>
             </div>
 
@@ -395,7 +450,7 @@ const RBAddProvider = () => {
 
               <select
                 className={inputClass}
-                value={form.providerId}
+                value={form.providerCode}
                 onChange={(e) => handleProviderSelect(e.target.value)}
               >
                 <option className="bg-[#030712]" value="">
@@ -407,7 +462,7 @@ const RBAddProvider = () => {
                 {oracleProviders.map((provider) => (
                   <option
                     className="bg-[#030712]"
-                    key={provider._id || provider.providerCode}
+                    key={provider.providerCode}
                     value={provider.providerCode}
                   >
                     {provider.providerName} ({provider.providerCode})
@@ -415,11 +470,37 @@ const RBAddProvider = () => {
                 ))}
               </select>
 
-              {form.providerId && (
-                <p className="mt-2 text-xs text-cyan-300/80">
-                  Code: <span className="font-mono">{form.providerId}</span> •
-                  Name: <span className="font-black">{form.providerName}</span>
-                </p>
+              {form.providerCode && (
+                <div className="mt-2 space-y-1 rounded-2xl border border-cyan-300/10 bg-cyan-300/5 px-4 py-3 text-xs text-cyan-300/90">
+                  <p>
+                    Provider Code:{" "}
+                    <span className="font-mono font-black">
+                      {form.providerCode}
+                    </span>
+                  </p>
+                  <p>
+                    Provider Name:{" "}
+                    <span className="font-black">{form.providerName}</span>
+                  </p>
+
+                  {selectedOracleProvider?.currency && (
+                    <p className="line-clamp-1">
+                      Currency:{" "}
+                      <span className="text-slate-300">
+                        {selectedOracleProvider.currency}
+                      </span>
+                    </p>
+                  )}
+
+                  {selectedOracleProvider?.language && (
+                    <p className="line-clamp-1">
+                      Language:{" "}
+                      <span className="text-slate-300">
+                        {selectedOracleProvider.language}
+                      </span>
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
@@ -498,7 +579,7 @@ const RBAddProvider = () => {
         <div className="rounded-[32px] border border-white/10 bg-white/[0.06] p-5 shadow-2xl md:p-6">
           <h2 className="text-xl font-black">Live Preview</h2>
           <p className="mt-1 text-sm text-slate-400">
-            Provider card preview before save
+            Provider card preview before save.
           </p>
 
           <div className="mt-5 overflow-hidden rounded-[28px] border border-white/10 bg-black/30">
@@ -562,7 +643,7 @@ const RBAddProvider = () => {
                   {form.providerName || "Provider Name"}
                 </h3>
                 <p className="truncate text-xs font-mono text-slate-400">
-                  {form.providerId || "provider_code"}
+                  {form.providerCode || "PROVIDER_CODE"}
                 </p>
               </div>
             </div>
@@ -584,7 +665,7 @@ const RBAddProvider = () => {
             </p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-[1fr_180px_140px_120px_120px_120px]">
+          <div className="grid gap-3 md:grid-cols-[1fr_180px_140px_120px_120px_130px_120px]">
             <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
               <Search className="h-5 w-5 text-cyan-300" />
 
@@ -670,7 +751,27 @@ const RBAddProvider = () => {
               </option>
             </select>
 
+            <select
+              value={syncFilter}
+              onChange={(e) => setSyncFilter(e.target.value)}
+              className={inputClass}
+            >
+              <option className="bg-[#030712]" value="">
+                Sync All
+              </option>
+              <option className="bg-[#030712]" value="pending">
+                Pending
+              </option>
+              <option className="bg-[#030712]" value="synced">
+                Synced
+              </option>
+              <option className="bg-[#030712]" value="failed">
+                Failed
+              </option>
+            </select>
+
             <button
+              type="button"
               onClick={loadSavedProviders}
               className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm font-black text-cyan-100 hover:bg-cyan-300/15"
             >
@@ -767,20 +868,36 @@ const RBAddProvider = () => {
                         {provider.providerName}
                       </h3>
                       <p className="truncate text-xs font-mono text-slate-400">
-                        {provider.providerId}
+                        {provider.providerCode}
                       </p>
                     </div>
                   </div>
 
-                  <p className="mb-4 truncate text-xs text-slate-500">
+                  <p className="mb-2 truncate text-xs text-slate-500">
                     Category:{" "}
                     {provider.categoryId?.categoryName?.en ||
                       selectedCategoryName ||
                       "—"}
                   </p>
 
+                  <p className="mb-4 truncate text-[11px] text-slate-600">
+                    Sync:{" "}
+                    <span
+                      className={
+                        provider.syncStatus === "synced"
+                          ? "text-emerald-300"
+                          : provider.syncStatus === "failed"
+                            ? "text-red-300"
+                            : "text-yellow-300"
+                      }
+                    >
+                      {provider.syncStatus || "pending"}
+                    </span>
+                  </p>
+
                   <div className="grid grid-cols-2 gap-3">
                     <button
+                      type="button"
                       onClick={() => startEdit(provider)}
                       className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-2.5 text-sm font-black text-cyan-100 hover:bg-cyan-300/15"
                     >
@@ -789,6 +906,7 @@ const RBAddProvider = () => {
                     </button>
 
                     <button
+                      type="button"
                       onClick={() => handleDelete(provider._id)}
                       className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-2.5 text-sm font-black text-red-200 hover:bg-red-500/20"
                     >

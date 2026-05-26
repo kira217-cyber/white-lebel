@@ -1,5 +1,6 @@
 import express from "express";
 import mongoose from "mongoose";
+import axios from "axios";
 
 import MasterRBGameProvider from "../models/MasterRBGameProvider.js";
 import MasterRBGameCategory from "../models/MasterRBGameCategory.js";
@@ -9,6 +10,13 @@ import { protectMasterAdmin } from "../middleware/authMiddleware.js";
 import { errorResponse, successResponse } from "../utils/response.js";
 
 const router = express.Router();
+
+const ORACLE_PROVIDER_LIST_API =
+  process.env.ORACLE_PROVIDER_LIST_API ||
+  "https://oraclegames.net/api/providerlist";
+
+const ORACLE_PROVIDER_LIST_KEY =
+  process.env.ORACLE_PROVIDER_LIST_KEY || "1189baca156e1bbbecc3b26651a63565";
 
 const filePath = (file) => {
   if (!file) return "";
@@ -20,6 +28,144 @@ const toBool = (value) => {
 };
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
+
+const cleanText = (value = "") => String(value || "").trim();
+
+const cleanProviderCode = (value = "") => cleanText(value).toUpperCase();
+
+/* ======================================================
+   FETCH ORACLE PROVIDER LIST
+   GET /api/master-rb-game-providers/oracle/list
+====================================================== */
+
+router.get("/oracle/list", protectMasterAdmin, async (req, res) => {
+  try {
+    const response = await axios.get(ORACLE_PROVIDER_LIST_API, {
+      headers: {
+        "x-oraclegamedata-key": ORACLE_PROVIDER_LIST_KEY,
+      },
+      timeout: 30000,
+    });
+
+    const list = Array.isArray(response.data) ? response.data : [];
+
+    const providers = list
+      .filter((item) => item?.code && item?.name)
+      .map((item) => ({
+        providerCode: cleanProviderCode(item.code),
+        providerName: cleanText(item.name),
+        image: item.image || "",
+        status: item.status,
+        currency: item.currency || "",
+        language: item.language || "",
+      }));
+
+    return successResponse(
+      res,
+      "Oracle provider list fetched successfully.",
+      providers,
+    );
+  } catch (error) {
+    return errorResponse(
+      res,
+      error?.response?.data?.message ||
+        error.message ||
+        "Failed to fetch Oracle provider list.",
+      500,
+    );
+  }
+});
+
+/* ======================================================
+   SYNC / SAVE ORACLE PROVIDERS BY CATEGORY
+   POST /api/master-rb-game-providers/oracle/sync
+   body: { categoryId, providers: [{ providerCode, providerName }] }
+====================================================== */
+
+router.post("/oracle/sync", protectMasterAdmin, async (req, res) => {
+  try {
+    const { categoryId, providers = [] } = req.body || {};
+
+    if (!categoryId || !isValidObjectId(categoryId)) {
+      return errorResponse(res, "Valid categoryId is required.", 400);
+    }
+
+    const category = await MasterRBGameCategory.findById(categoryId);
+
+    if (!category) {
+      return errorResponse(res, "RB category not found.", 404);
+    }
+
+    if (!Array.isArray(providers) || providers.length === 0) {
+      return errorResponse(res, "Providers array is required.", 400);
+    }
+
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+
+    const savedProviders = [];
+
+    for (const item of providers) {
+      const providerCode = cleanProviderCode(item.providerCode || item.code);
+      const providerName = cleanText(item.providerName || item.name);
+
+      if (!providerCode || !providerName) {
+        skipped += 1;
+        continue;
+      }
+
+      const existing = await MasterRBGameProvider.findOne({
+        categoryId,
+        providerCode,
+      });
+
+      if (existing) {
+        existing.providerName = providerName;
+        existing.syncStatus = "synced";
+        existing.lastSyncedAt = new Date();
+
+        await existing.save();
+
+        updated += 1;
+        savedProviders.push(existing);
+      } else {
+        const provider = await MasterRBGameProvider.create({
+          categoryId,
+          providerCode,
+          providerName,
+          providerImage: item.image || "",
+          providerIcon: item.image || "",
+          isHot: false,
+          isNew: false,
+          status: "active",
+          syncStatus: "synced",
+          lastSyncedAt: new Date(),
+        });
+
+        created += 1;
+        savedProviders.push(provider);
+      }
+    }
+
+    return successResponse(res, "Oracle providers synced successfully.", {
+      created,
+      updated,
+      skipped,
+      providers: savedProviders,
+    });
+  } catch (error) {
+    if (error?.code === 11000) {
+      return errorResponse(
+        res,
+        "This provider already exists in this category.",
+        400,
+      );
+    }
+
+    return errorResponse(res, error.message || "Server error", 500);
+  }
+});
 
 /* ======================================================
    CREATE RB PROVIDER
@@ -34,17 +180,17 @@ router.post(
   ]),
   async (req, res) => {
     try {
-      const { categoryId, providerName, providerId, status, isHot, isNew } =
+      const { categoryId, providerCode, providerName, status, isHot, isNew } =
         req.body || {};
 
       if (!categoryId || !isValidObjectId(categoryId)) {
         return errorResponse(res, "Valid categoryId is required.", 400);
       }
 
-      if (!providerName || !providerId) {
+      if (!providerCode || !providerName) {
         return errorResponse(
           res,
-          "providerName and providerId are required.",
+          "providerCode and providerName are required.",
           400,
         );
       }
@@ -55,9 +201,11 @@ router.post(
         return errorResponse(res, "RB category not found.", 404);
       }
 
+      const finalProviderCode = cleanProviderCode(providerCode);
+
       const exists = await MasterRBGameProvider.findOne({
         categoryId,
-        providerId: String(providerId).trim(),
+        providerCode: finalProviderCode,
       });
 
       if (exists) {
@@ -81,8 +229,8 @@ router.post(
 
       const provider = await MasterRBGameProvider.create({
         categoryId,
-        providerName: String(providerName).trim(),
-        providerId: String(providerId).trim(),
+        providerCode: finalProviderCode,
+        providerName: cleanText(providerName),
         providerImage: filePath(providerImage),
         providerIcon: filePath(providerIcon),
         isHot: toBool(isHot),
@@ -123,6 +271,7 @@ router.get("/", protectMasterAdmin, async (req, res) => {
       status = "",
       isHot = "",
       isNew = "",
+      syncStatus = "",
       page = 1,
       limit = 20,
     } = req.query || {};
@@ -141,6 +290,10 @@ router.get("/", protectMasterAdmin, async (req, res) => {
       query.status = status;
     }
 
+    if (syncStatus) {
+      query.syncStatus = syncStatus;
+    }
+
     if (isHot !== "") {
       query.isHot = toBool(isHot);
     }
@@ -152,7 +305,7 @@ router.get("/", protectMasterAdmin, async (req, res) => {
     if (search) {
       query.$or = [
         { providerName: { $regex: search, $options: "i" } },
-        { providerId: { $regex: search, $options: "i" } },
+        { providerCode: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -233,7 +386,7 @@ router.put(
         return errorResponse(res, "RB game provider not found.", 404);
       }
 
-      const { categoryId, providerName, providerId, status, isHot, isNew } =
+      const { categoryId, providerCode, providerName, status, isHot, isNew } =
         req.body || {};
 
       if (categoryId !== undefined) {
@@ -250,17 +403,17 @@ router.put(
         provider.categoryId = categoryId;
       }
 
-      if (providerName !== undefined) {
-        provider.providerName = String(providerName).trim();
-      }
+      if (providerCode !== undefined) {
+        const newProviderCode = cleanProviderCode(providerCode);
 
-      if (providerId !== undefined) {
-        const newProviderId = String(providerId).trim();
+        if (!newProviderCode) {
+          return errorResponse(res, "providerCode is required.", 400);
+        }
 
         const exists = await MasterRBGameProvider.findOne({
           _id: { $ne: provider._id },
           categoryId: provider.categoryId,
-          providerId: newProviderId,
+          providerCode: newProviderCode,
         });
 
         if (exists) {
@@ -271,7 +424,17 @@ router.put(
           );
         }
 
-        provider.providerId = newProviderId;
+        provider.providerCode = newProviderCode;
+      }
+
+      if (providerName !== undefined) {
+        const newProviderName = cleanText(providerName);
+
+        if (!newProviderName) {
+          return errorResponse(res, "providerName is required.", 400);
+        }
+
+        provider.providerName = newProviderName;
       }
 
       if (status !== undefined) {

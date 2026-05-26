@@ -1,29 +1,25 @@
 import express from "express";
 import axios from "axios";
-
 import WhiteLabelSite from "../models/WhiteLabelSite.js";
 import MasterRBGameCategory from "../models/MasterRBGameCategory.js";
 import MasterRBGameProvider from "../models/MasterRBGameProvider.js";
 import MasterRBGame from "../models/MasterRBGame.js";
+import MasterRBLiveGame from "../models/MasterRBLiveGame.js";
 
 const router = express.Router();
 
-const ORACLE_BASE = "https://api.oraclegames.live/api";
-const ORACLE_KEY = "ceeeba1c-892b-4571-b05f-2bcec5c4a44e";
+const ORACLE_GET_GAMES_API =
+  process.env.ORACLE_GET_GAMES_API || "https://oraclegames.net/api/getgames";
+
+const ORACLE_GAME_DATA_KEY =
+  process.env.ORACLE_GAME_DATA_KEY || "1189baca156e1bbbecc3b26651a63565";
 
 const ok = (res, message, data = null, status = 200) => {
-  return res.status(status).json({
-    success: true,
-    message,
-    data,
-  });
+  return res.status(status).json({ success: true, message, data });
 };
 
 const fail = (res, message, status = 500) => {
-  return res.status(status).json({
-    success: false,
-    message,
-  });
+  return res.status(status).json({ success: false, message });
 };
 
 const getToken = (req) => {
@@ -76,21 +72,36 @@ const chunkArray = (arr = [], size = 100) => {
   return chunks;
 };
 
-const fetchOracleGamesByIds = async (ids = []) => {
-  const cleanIds = [
-    ...new Set(ids.map((id) => String(id || "").trim()).filter(Boolean)),
-  ];
+const cleanText = (value = "") => String(value || "").trim();
 
-  console.log("ORACLE_KEY EXISTS:", Boolean(ORACLE_KEY));
-  console.log("ORACLE IDS:", cleanIds);
+const cleanOracleImageType = (type = "thumbnail") => {
+  if (["thumbnail", "height", "original"].includes(type)) return type;
+  return "thumbnail";
+};
 
-  if (!cleanIds.length) {
-    console.log("No game ids found for Oracle API");
-    return new Map();
+const getOracleImageByType = (oracle = {}, type = "thumbnail") => {
+  const imageType = cleanOracleImageType(type);
+
+  if (imageType === "original") {
+    return oracle.original || oracle.height || oracle.thumbnail || "";
   }
 
-  if (!ORACLE_KEY) {
-    console.log("ORACLE_TOKEN missing in .env");
+  if (imageType === "height") {
+    return oracle.height || oracle.thumbnail || oracle.original || "";
+  }
+
+  return oracle.thumbnail || oracle.height || oracle.original || "";
+};
+
+const fetchOracleGamesByUIds = async (gameUIds = []) => {
+  const cleanIds = [
+    ...new Set(gameUIds.map((id) => cleanText(id)).filter(Boolean)),
+  ];
+
+  if (!cleanIds.length) return new Map();
+
+  if (!ORACLE_GAME_DATA_KEY) {
+    console.log("ORACLE_GAME_DATA_KEY missing in .env");
     return new Map();
   }
 
@@ -100,62 +111,75 @@ const fetchOracleGamesByIds = async (ids = []) => {
   for (const chunk of chunks) {
     try {
       const res = await axios.post(
-        `${ORACLE_BASE}/games/by-ids`,
-        { ids: chunk },
+        ORACLE_GET_GAMES_API,
+        {
+          game_uid: chunk,
+        },
         {
           headers: {
-            "x-api-key": ORACLE_KEY,
+            "x-oraclegamedata-key": ORACLE_GAME_DATA_KEY,
+            "Content-Type": "application/json",
           },
           timeout: 20000,
         },
       );
 
-      console.log("ORACLE RESPONSE COUNT:", res.data?.count);
-      console.log("ORACLE RESPONSE DATA LENGTH:", res.data?.data?.length);
-
-      const list = Array.isArray(res.data?.data) ? res.data.data : [];
+      const list = Array.isArray(res.data) ? res.data : res.data?.data || [];
       allGames.push(...list);
     } catch (error) {
       console.log(
-        "Oracle games/by-ids failed status:",
-        error?.response?.status,
+        "Oracle games fetch failed:",
+        error?.response?.data || error.message,
       );
-      console.log("Oracle games/by-ids failed data:", error?.response?.data);
-      console.log("Oracle games/by-ids failed message:", error?.message);
     }
   }
 
-  console.log("ORACLE FINAL GAMES:", allGames.length);
-
   return new Map(
-    allGames.map((game) => [
-      String(game._id),
-      {
-        gameName: game.gameName || game.name || "",
-        game_code: game.game_code || "",
-        oracleImage: game.image || "",
-        provider: game.provider || null,
-      },
-    ]),
+    allGames
+      .filter((game) => game?.game_uid)
+      .map((game) => [
+        String(game.game_uid),
+        {
+          gameName: game.name || "",
+          gameUId: game.game_uid || "",
+          provider: game.provider || "",
+          category: game.category || "",
+          original: game.original || "",
+          height: game.height || "",
+          thumbnail: game.thumbnail || "",
+          status: game.status,
+        },
+      ]),
   );
 };
 
 const normalizeGame = (game, oracleMap) => {
-  const oracle = oracleMap.get(String(game.gameId)) || {};
+  const oracle = oracleMap.get(String(game.gameUId)) || {};
+  const oracleImageType = cleanOracleImageType(game.oracleImageType);
 
   return {
     _id: game._id,
     categoryId: game.categoryId,
     providerDbId: game.providerDbId,
 
-    gameId: game.gameId,
-    gameName: oracle.gameName || game.gameName || game.gameId,
-    game_code: oracle.game_code || game.game_code || "",
+    gameUId: game.gameUId,
+    gameId: game.gameUId,
+
+    gameName: oracle.gameName || game.gameUId,
+
+    provider: oracle.provider || game.providerDbId?.providerCode || "",
+    category: oracle.category || "",
 
     image: game.image || "",
-    oracleImage: oracle.oracleImage || "",
+    oracleImage: getOracleImageByType(oracle, oracleImageType),
 
-    provider: oracle.provider || null,
+    oracleImages: {
+      thumbnail: oracle.thumbnail || "",
+      height: oracle.height || "",
+      original: oracle.original || "",
+    },
+
+    oracleImageType,
 
     isHot: game.isHot,
     isNew: game.isNew,
@@ -166,11 +190,7 @@ const normalizeGame = (game, oracleMap) => {
   };
 };
 
-/* ======================================================
-   VERIFY TOKEN
-   POST /api/white-label/verify-token
-====================================================== */
-
+/* VERIFY TOKEN */
 router.post("/verify-token", async (req, res) => {
   try {
     const token = String(req.body?.token || req.body?.apiKey || "").trim();
@@ -201,47 +221,32 @@ router.post("/verify-token", async (req, res) => {
   }
 });
 
-/* ======================================================
-   GAME MENU
-   GET /api/white-label/game-menu
-====================================================== */
-
+/* GAME MENU */
 router.get("/game-menu", verifyWhiteLabelToken, async (req, res) => {
   try {
-    const categories = await MasterRBGameCategory.find({
-      status: "active",
-    })
-      .sort({
-        order: 1,
-        createdAt: 1,
-      })
+    const categories = await MasterRBGameCategory.find({ status: "active" })
+      .sort({ order: 1, createdAt: 1 })
       .lean();
 
     const categoryIds = categories.map((item) => item._id);
 
     const providers = await MasterRBGameProvider.find({
       status: "active",
-      categoryId: {
-        $in: categoryIds,
-      },
+      categoryId: { $in: categoryIds },
     })
-      .sort({
-        createdAt: -1,
-      })
+      .sort({ createdAt: -1 })
       .lean();
 
     const providerMap = providers.reduce((acc, provider) => {
       const key = String(provider.categoryId);
 
-      if (!acc[key]) {
-        acc[key] = [];
-      }
+      if (!acc[key]) acc[key] = [];
 
       acc[key].push({
         _id: provider._id,
         categoryId: provider.categoryId,
         providerName: provider.providerName,
-        providerId: provider.providerId,
+        providerCode: provider.providerCode,
         providerImage: provider.providerImage,
         providerIcon: provider.providerIcon,
         status: provider.status,
@@ -268,11 +273,7 @@ router.get("/game-menu", verifyWhiteLabelToken, async (req, res) => {
   }
 });
 
-/* ======================================================
-   SINGLE CATEGORY
-   GET /api/white-label/game-categories/:id
-====================================================== */
-
+/* SINGLE CATEGORY */
 router.get("/game-categories/:id", verifyWhiteLabelToken, async (req, res) => {
   try {
     const category = await MasterRBGameCategory.findOne({
@@ -288,9 +289,7 @@ router.get("/game-categories/:id", verifyWhiteLabelToken, async (req, res) => {
       categoryId: category._id,
       status: "active",
     })
-      .sort({
-        createdAt: -1,
-      })
+      .sort({ createdAt: -1 })
       .lean();
 
     return ok(res, "White label category fetched successfully.", {
@@ -305,7 +304,7 @@ router.get("/game-categories/:id", verifyWhiteLabelToken, async (req, res) => {
         _id: provider._id,
         categoryId: provider.categoryId,
         providerName: provider.providerName,
-        providerId: provider.providerId,
+        providerCode: provider.providerCode,
         providerImage: provider.providerImage,
         providerIcon: provider.providerIcon,
         status: provider.status,
@@ -316,11 +315,7 @@ router.get("/game-categories/:id", verifyWhiteLabelToken, async (req, res) => {
   }
 });
 
-/* ======================================================
-   GAMES
-   GET /api/white-label/games?categoryId=&providerDbId=
-====================================================== */
-
+/* GAMES */
 router.get("/games", verifyWhiteLabelToken, async (req, res) => {
   try {
     const { categoryId = "", providerDbId = "" } = req.query || {};
@@ -339,20 +334,73 @@ router.get("/games", verifyWhiteLabelToken, async (req, res) => {
     }
 
     const games = await MasterRBGame.find(query)
-      .sort({
-        createdAt: -1,
-      })
+      .populate("providerDbId", "providerName providerCode status")
+      .sort({ createdAt: -1 })
       .lean();
 
-    const gameIds = games
-      .map((game) => String(game.gameId || "").trim())
+    const gameUIds = games
+      .map((game) => cleanText(game.gameUId))
       .filter(Boolean);
 
-    const oracleMap = await fetchOracleGamesByIds(gameIds);
+    const oracleMap = await fetchOracleGamesByUIds(gameUIds);
 
     const data = games.map((game) => normalizeGame(game, oracleMap));
 
     return ok(res, "White label games fetched successfully.", data);
+  } catch (error) {
+    return fail(res, error.message || "Server error", 500);
+  }
+});
+
+/* HOT GAMES */
+router.get("/hot-games", verifyWhiteLabelToken, async (req, res) => {
+  try {
+    const limit = Math.max(Number(req.query.limit) || 15, 1);
+
+    const games = await MasterRBGame.find({
+      status: "active",
+      isHot: true,
+    })
+      .populate("providerDbId", "providerName providerCode status")
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    const gameUIds = games
+      .map((game) => cleanText(game.gameUId))
+      .filter(Boolean);
+
+    const oracleMap = await fetchOracleGamesByUIds(gameUIds);
+
+    const data = games.map((game) => normalizeGame(game, oracleMap));
+
+    return ok(res, "White label hot games fetched successfully.", data);
+  } catch (error) {
+    return fail(res, error.message || "Server error", 500);
+  }
+});
+
+/* LIVE GAME GLOBAL */
+router.get("/live-game", verifyWhiteLabelToken, async (req, res) => {
+  try {
+    let config = await MasterRBLiveGame.findOne().lean();
+
+    if (!config) {
+      return ok(res, "Live game config fetched successfully.", {
+        gameUID: "",
+        isActive: false,
+        openInNewTab: true,
+      });
+    }
+
+    return ok(res, "Live game config fetched successfully.", {
+      _id: config._id,
+      gameUID: config.gameUID,
+      isActive: config.isActive,
+      openInNewTab: config.openInNewTab,
+      note: config.note || "",
+      updatedAt: config.updatedAt,
+    });
   } catch (error) {
     return fail(res, error.message || "Server error", 500);
   }

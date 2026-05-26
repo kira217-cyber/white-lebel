@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
 import {
   CheckCircle2,
   Edit,
@@ -20,13 +19,12 @@ import { toast } from "react-toastify";
 import { api } from "../../api/axios";
 
 const API_URL = import.meta.env.VITE_API_URL;
-const ORACLE_BASE = "https://api.oraclegames.live/api";
-const ORACLE_KEY = import.meta.env.VITE_ORACLE_TOKEN;
 
 const GAMES_PER_PAGE = 50;
 
 const initialAddFlags = {
   image: null,
+  oracleImageType: "thumbnail",
   isHot: false,
   isNew: false,
   isJackpot: false,
@@ -35,6 +33,7 @@ const initialAddFlags = {
 
 const initialEditFlags = {
   image: null,
+  oracleImageType: "thumbnail",
   isHot: false,
   isNew: false,
   isJackpot: false,
@@ -45,6 +44,76 @@ const fileUrl = (path = "") => {
   if (!path) return "";
   if (String(path).startsWith("http")) return path;
   return `${API_URL}${String(path).startsWith("/") ? path : `/${path}`}`;
+};
+
+const cleanText = (value = "") => String(value || "").trim();
+
+const getOracleGameId = (game) => {
+  return cleanText(game?.game_uid || game?.gameUId || "");
+};
+
+const getOracleGameImage = (game, type = "thumbnail") => {
+  if (!game) return "";
+
+  const images = game?.images || {};
+
+  if (type === "original") {
+    return game?.original || images?.original || game?.raw?.original || "";
+  }
+
+  if (type === "height") {
+    return game?.height || images?.height || game?.raw?.height || "";
+  }
+
+  if (type === "thumbnail") {
+    return (
+      game?.thumbnail ||
+      images?.thumbnail ||
+      game?.raw?.thumbnail ||
+      game?.original ||
+      images?.original ||
+      ""
+    );
+  }
+
+  return (
+    game?.thumbnail ||
+    images?.thumbnail ||
+    game?.height ||
+    images?.height ||
+    game?.original ||
+    images?.original ||
+    ""
+  );
+};
+
+const normalizeOracleGames = (payload) => {
+  const list = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.games)
+      ? payload.games
+      : Array.isArray(payload?.data?.games)
+        ? payload.data.games
+        : [];
+
+  return list
+    .filter((game) => game?.game_uid || game?.gameUId)
+    .map((game) => ({
+      ...game,
+      name: game?.name || "",
+      game_uid: getOracleGameId(game),
+      provider: game?.provider || "",
+      category: game?.category || "",
+      status: game?.status,
+      original:
+        game?.original || game?.images?.original || game?.raw?.original || "",
+      height: game?.height || game?.images?.height || game?.raw?.height || "",
+      thumbnail:
+        game?.thumbnail ||
+        game?.images?.thumbnail ||
+        game?.raw?.thumbnail ||
+        "",
+    }));
 };
 
 const RBAddGame = () => {
@@ -77,16 +146,16 @@ const RBAddGame = () => {
 
   const selectedCategory = useMemo(
     () => categories.find((item) => item._id === selectedCategoryId),
-    [categories, selectedCategoryId]
+    [categories, selectedCategoryId],
   );
 
   const selectedProvider = useMemo(
     () => providers.find((item) => item._id === selectedProviderDbId),
-    [providers, selectedProviderDbId]
+    [providers, selectedProviderDbId],
   );
 
   const selectedCategoryName = selectedCategory?.categoryName?.en || "";
-  const selectedProviderName = selectedProvider?.providerName || "";
+  const selectedProviderCode = selectedProvider?.providerCode || "";
 
   const inputClass =
     "w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 transition focus:border-cyan-300/60";
@@ -97,15 +166,14 @@ const RBAddGame = () => {
       setLoadingCategories(true);
 
       const res = await api.get("/api/master/rb-game-categories", {
-        params: {
-          limit: 200,
-          status: "active",
-        },
+        params: { limit: 200, status: "active" },
       });
 
       setCategories(res.data?.data?.categories || []);
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Failed to load categories");
+      toast.error(
+        error?.response?.data?.message || "Failed to load categories",
+      );
     } finally {
       setLoadingCategories(false);
     }
@@ -122,11 +190,7 @@ const RBAddGame = () => {
       setLoadingProviders(true);
 
       const res = await api.get("/api/master/rb-game-providers", {
-        params: {
-          categoryId,
-          limit: 200,
-          status: "active",
-        },
+        params: { categoryId, limit: 200, status: "active" },
       });
 
       setProviders(res.data?.data?.providers || []);
@@ -147,16 +211,13 @@ const RBAddGame = () => {
       setLoadingSelectedGames(true);
 
       const res = await api.get("/api/master/rb-games", {
-        params: {
-          providerDbId,
-          limit: 10000,
-        },
+        params: { providerDbId, limit: 10000 },
       });
 
       setSelectedGames(res.data?.data?.games || []);
     } catch (error) {
       toast.error(
-        error?.response?.data?.message || "Failed to load selected games"
+        error?.response?.data?.message || "Failed to load selected games",
       );
     } finally {
       setLoadingSelectedGames(false);
@@ -164,7 +225,7 @@ const RBAddGame = () => {
   };
 
   const loadOracleGames = async () => {
-    if (!selectedProvider?.providerId) {
+    if (!selectedProviderCode) {
       setProviderGames([]);
       setCurrentPage(1);
       return;
@@ -173,20 +234,17 @@ const RBAddGame = () => {
     try {
       setLoadingGames(true);
 
-      const res = await axios.get(
-        `${ORACLE_BASE}/providers/${selectedProvider.providerId}`,
-        {
-          headers: {
-            "x-api-key": ORACLE_KEY,
-          },
-        }
+      const res = await api.get(
+        `/api/master/rb-games/oracle/${selectedProviderCode}`,
       );
 
-      setProviderGames(res.data?.games || []);
+      const games = normalizeOracleGames(res.data?.data || res.data);
+
+      setProviderGames(games);
       setCurrentPage(1);
     } catch (error) {
       toast.error(
-        error?.response?.data?.message || "Failed to load Oracle games"
+        error?.response?.data?.message || "Failed to load Oracle games",
       );
       setProviderGames([]);
     } finally {
@@ -210,7 +268,7 @@ const RBAddGame = () => {
   useEffect(() => {
     loadOracleGames();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProvider?.providerId]);
+  }, [selectedProviderCode]);
 
   useEffect(() => {
     if (!form.image) {
@@ -233,6 +291,19 @@ const RBAddGame = () => {
     return () => URL.revokeObjectURL(url);
   }, [editForm.image]);
 
+  useEffect(() => {
+    if (!editingGame || editForm.image) return;
+
+    if (editingGame.image) {
+      setEditPreview(fileUrl(editingGame.image));
+      return;
+    }
+
+    setEditPreview(
+      getOracleGameImage(editingGame.oracleGame, editForm.oracleImageType),
+    );
+  }, [editForm.oracleImageType, editingGame, editForm.image]);
+
   const resetAddForm = () => {
     setForm(initialAddFlags);
     setImagePreview("");
@@ -244,55 +315,67 @@ const RBAddGame = () => {
     if (!q) return providerGames;
 
     return providerGames.filter((game) => {
-      const name = String(game?.gameName || game?.name || "").toLowerCase();
-      const gameId = String(game?._id || "").toLowerCase();
-      const code = String(game?.game_code || "").toLowerCase();
+      const name = String(game?.name || "").toLowerCase();
+      const gameUId = String(game?.game_uid || "").toLowerCase();
+      const category = String(game?.category || "").toLowerCase();
+      const provider = String(game?.provider || "").toLowerCase();
 
-      return name.includes(q) || gameId.includes(q) || code.includes(q);
+      return (
+        name.includes(q) ||
+        gameUId.includes(q) ||
+        category.includes(q) ||
+        provider.includes(q)
+      );
     });
   }, [providerGames, searchGame]);
 
-  const totalPages = Math.ceil(filteredOracleGames.length / GAMES_PER_PAGE) || 1;
+  const totalPages =
+    Math.ceil(filteredOracleGames.length / GAMES_PER_PAGE) || 1;
+
   const startIndex = (currentPage - 1) * GAMES_PER_PAGE;
   const endIndex = startIndex + GAMES_PER_PAGE;
   const paginatedGames = filteredOracleGames.slice(startIndex, endIndex);
 
-  const isGameSelected = (oracleGameId) => {
-    return selectedGames.some((item) => String(item.gameId) === String(oracleGameId));
+  const isGameSelected = (gameUId) => {
+    return selectedGames.some(
+      (item) => String(item.gameUId) === String(gameUId),
+    );
   };
 
-  const getSelectedGame = (oracleGameId) => {
-    return selectedGames.find((item) => String(item.gameId) === String(oracleGameId));
+  const getSelectedGame = (gameUId) => {
+    return selectedGames.find(
+      (item) => String(item.gameUId) === String(gameUId),
+    );
   };
 
   const selectedCountThisPage = useMemo(() => {
     return paginatedGames.reduce((total, game) => {
-      return isGameSelected(game._id) ? total + 1 : total;
+      return isGameSelected(getOracleGameId(game)) ? total + 1 : total;
     }, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paginatedGames, selectedGames]);
 
   const allSelectedThisPage =
-    paginatedGames.length > 0 && selectedCountThisPage === paginatedGames.length;
+    paginatedGames.length > 0 &&
+    selectedCountThisPage === paginatedGames.length;
 
   const goToPage = (page) => {
     if (page < 1 || page > totalPages) return;
     setCurrentPage(page);
   };
 
-  const oracleImage = (game) => {
-    return game?.image || "";
-  };
-
   const handleSelectGame = async (game) => {
     if (!selectedCategoryId) return toast.error("Please select category");
     if (!selectedProviderDbId) return toast.error("Please select provider");
 
-    const alreadySelected = isGameSelected(game._id);
+    const gameUId = getOracleGameId(game);
+    if (!gameUId) return toast.error("game_uid not found from Oracle API");
+
+    const alreadySelected = isGameSelected(gameUId);
 
     try {
       if (alreadySelected) {
-        const selectedDoc = getSelectedGame(game._id);
+        const selectedDoc = getSelectedGame(gameUId);
 
         if (!selectedDoc?._id) {
           return toast.error("Selected game data not found");
@@ -301,7 +384,7 @@ const RBAddGame = () => {
         await api.delete(`/api/master/rb-games/${selectedDoc._id}`);
 
         setSelectedGames((prev) =>
-          prev.filter((item) => item._id !== selectedDoc._id)
+          prev.filter((item) => item._id !== selectedDoc._id),
         );
 
         toast.success("Game removed");
@@ -312,22 +395,19 @@ const RBAddGame = () => {
 
       fd.append("categoryId", selectedCategoryId);
       fd.append("providerDbId", selectedProviderDbId);
-      fd.append("gameId", game._id);
+      fd.append("gameUId", gameUId);
+      fd.append("oracleImageType", form.oracleImageType || "thumbnail");
       fd.append("isHot", String(Boolean(form.isHot)));
       fd.append("isNew", String(Boolean(form.isNew)));
       fd.append("isJackpot", String(Boolean(form.isJackpot)));
       fd.append("status", form.status || "active");
 
-      // Oracle image URL save hobe na.
-      // Shudhu custom upload korle image save hobe.
       if (form.image instanceof File) {
         fd.append("image", form.image);
       }
 
       const res = await api.post("/api/master/rb-games", fd, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       setSelectedGames((prev) => [res.data?.data, ...prev]);
@@ -341,7 +421,6 @@ const RBAddGame = () => {
   const handleSelectAllThisPage = async () => {
     if (bulkLoading) return;
     if (!paginatedGames.length) return;
-
     if (!selectedCategoryId) return toast.error("Please select category");
     if (!selectedProviderDbId) return toast.error("Please select provider");
 
@@ -353,8 +432,10 @@ const RBAddGame = () => {
       let failed = 0;
 
       for (const game of paginatedGames) {
-        if (isGameSelected(game._id)) {
-          skipped++;
+        const gameUId = getOracleGameId(game);
+
+        if (!gameUId || isGameSelected(gameUId)) {
+          skipped += 1;
           continue;
         }
 
@@ -362,31 +443,27 @@ const RBAddGame = () => {
 
         fd.append("categoryId", selectedCategoryId);
         fd.append("providerDbId", selectedProviderDbId);
-        fd.append("gameId", game._id);
+        fd.append("gameUId", gameUId);
+        fd.append("oracleImageType", form.oracleImageType || "thumbnail");
         fd.append("isHot", String(Boolean(form.isHot)));
         fd.append("isNew", String(Boolean(form.isNew)));
         fd.append("isJackpot", String(Boolean(form.isJackpot)));
         fd.append("status", form.status || "active");
 
-        // Bulk action custom image use korbe na.
-        // Oracle image DB te save hobe na.
-
         try {
           const res = await api.post("/api/master/rb-games", fd, {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
+            headers: { "Content-Type": "multipart/form-data" },
           });
 
           setSelectedGames((prev) => [res.data?.data, ...prev]);
-          added++;
+          added += 1;
         } catch {
-          failed++;
+          failed += 1;
         }
       }
 
       if (added) toast.success(`Selected ${added} games`);
-      if (skipped) toast.info(`Skipped ${skipped} already selected`);
+      if (skipped) toast.info(`Skipped ${skipped} games`);
       if (failed) toast.error(`Failed ${failed} games`);
     } finally {
       setBulkLoading(false);
@@ -405,10 +482,10 @@ const RBAddGame = () => {
       let failed = 0;
 
       for (const game of paginatedGames) {
-        const selectedDoc = getSelectedGame(game._id);
+        const selectedDoc = getSelectedGame(getOracleGameId(game));
 
         if (!selectedDoc?._id) {
-          skipped++;
+          skipped += 1;
           continue;
         }
 
@@ -416,12 +493,12 @@ const RBAddGame = () => {
           await api.delete(`/api/master/rb-games/${selectedDoc._id}`);
 
           setSelectedGames((prev) =>
-            prev.filter((item) => item._id !== selectedDoc._id)
+            prev.filter((item) => item._id !== selectedDoc._id),
           );
 
-          removed++;
+          removed += 1;
         } catch {
-          failed++;
+          failed += 1;
         }
       }
 
@@ -434,6 +511,8 @@ const RBAddGame = () => {
   };
 
   const openEditModal = (selectedDoc, oracleGame = null) => {
+    const imageType = selectedDoc.oracleImageType || "thumbnail";
+
     setEditingGame({
       ...selectedDoc,
       oracleGame,
@@ -441,6 +520,7 @@ const RBAddGame = () => {
 
     setEditForm({
       image: null,
+      oracleImageType: imageType,
       isHot: Boolean(selectedDoc.isHot),
       isNew: Boolean(selectedDoc.isNew),
       isJackpot: Boolean(selectedDoc.isJackpot),
@@ -449,10 +529,8 @@ const RBAddGame = () => {
 
     if (selectedDoc.image) {
       setEditPreview(fileUrl(selectedDoc.image));
-    } else if (oracleGame?.image) {
-      setEditPreview(oracleGame.image);
     } else {
-      setEditPreview("");
+      setEditPreview(getOracleGameImage(oracleGame, imageType));
     }
 
     setIsModalOpen(true);
@@ -473,6 +551,7 @@ const RBAddGame = () => {
     try {
       const fd = new FormData();
 
+      fd.append("oracleImageType", editForm.oracleImageType || "thumbnail");
       fd.append("isHot", String(Boolean(editForm.isHot)));
       fd.append("isNew", String(Boolean(editForm.isNew)));
       fd.append("isJackpot", String(Boolean(editForm.isJackpot)));
@@ -483,13 +562,13 @@ const RBAddGame = () => {
       }
 
       const res = await api.put(`/api/master/rb-games/${editingGame._id}`, fd, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       setSelectedGames((prev) =>
-        prev.map((item) => (item._id === editingGame._id ? res.data?.data : item))
+        prev.map((item) =>
+          item._id === editingGame._id ? res.data?.data : item,
+        ),
       );
 
       toast.success("Game updated");
@@ -504,14 +583,15 @@ const RBAddGame = () => {
 
     try {
       const res = await api.patch(
-        `/api/master/rb-games/${editingGame._id}/remove-image`
+        `/api/master/rb-games/${editingGame._id}/remove-image`,
       );
 
       setSelectedGames((prev) =>
-        prev.map((item) => (item._id === editingGame._id ? res.data?.data : item))
+        prev.map((item) =>
+          item._id === editingGame._id ? res.data?.data : item,
+        ),
       );
 
-      setEditPreview(editingGame?.oracleGame?.image || "");
       toast.success("Custom image removed");
       closeModal();
     } catch (error) {
@@ -557,9 +637,8 @@ const RBAddGame = () => {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm text-slate-300">
-              Select RB category and provider, then add Oracle games to your
-              master panel. Oracle image is not saved; custom uploaded image is
-              saved only when you upload it.
+              Select RB category and provider, then add Oracle games. Oracle
+              image URL is not saved; only custom uploaded image is saved.
             </p>
           </div>
 
@@ -568,11 +647,9 @@ const RBAddGame = () => {
               <Sparkles className="h-6 w-6 text-emerald-300" />
               <div>
                 <p className="text-sm font-black text-emerald-100">
-                  50 Games Per Page
+                  Oracle Games
                 </p>
-                <p className="text-xs text-emerald-200/80">
-                  Bulk select and remove ready
-                </p>
+                <p className="text-xs text-emerald-200/80">50 games per page</p>
               </div>
             </div>
           </div>
@@ -583,7 +660,7 @@ const RBAddGame = () => {
         <div className="mb-5">
           <h2 className="text-xl font-black">Select Category & Provider</h2>
           <p className="text-sm text-slate-400">
-            Provider games will load from Oracle API by provider code.
+            Provider games will load from Oracle API by providerCode.
           </p>
         </div>
 
@@ -597,7 +674,9 @@ const RBAddGame = () => {
               className={inputClass}
             >
               <option className="bg-[#030712]" value="">
-                {loadingCategories ? "Loading categories..." : "Choose category..."}
+                {loadingCategories
+                  ? "Loading categories..."
+                  : "Choose category..."}
               </option>
 
               {categories.map((category) => (
@@ -613,7 +692,8 @@ const RBAddGame = () => {
 
             {selectedCategoryId && (
               <p className="mt-2 text-xs text-cyan-300/80">
-                Selected: <span className="font-black">{selectedCategoryName}</span>
+                Selected:{" "}
+                <span className="font-black">{selectedCategoryName}</span>
               </p>
             )}
           </div>
@@ -641,7 +721,7 @@ const RBAddGame = () => {
                   key={provider._id}
                   value={provider._id}
                 >
-                  {provider.providerName} ({provider.providerId})
+                  {provider.providerName} ({provider.providerCode})
                 </option>
               ))}
             </select>
@@ -650,7 +730,7 @@ const RBAddGame = () => {
               <p className="mt-2 text-xs text-cyan-300/80">
                 Provider Code:{" "}
                 <span className="font-mono font-black">
-                  {selectedProvider.providerId}
+                  {selectedProvider.providerCode}
                 </span>
               </p>
             )}
@@ -681,12 +761,13 @@ const RBAddGame = () => {
                     setSearchGame(e.target.value);
                     setCurrentPage(1);
                   }}
-                  placeholder="Search game name, ID, code..."
+                  placeholder="Search game name, uid, category..."
                   className="w-full bg-transparent text-sm outline-none placeholder:text-slate-500"
                 />
               </div>
 
               <button
+                type="button"
                 onClick={loadOracleGames}
                 className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm font-black text-cyan-100 hover:bg-cyan-300/15"
               >
@@ -695,6 +776,7 @@ const RBAddGame = () => {
               </button>
 
               <button
+                type="button"
                 onClick={handleSelectAllThisPage}
                 disabled={bulkLoading || allSelectedThisPage}
                 className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-500 to-emerald-500 px-4 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
@@ -708,6 +790,7 @@ const RBAddGame = () => {
               </button>
 
               <button
+                type="button"
                 onClick={handleRemoveAllThisPage}
                 disabled={bulkLoading || selectedCountThisPage === 0}
                 className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm font-black text-red-200 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
@@ -722,13 +805,15 @@ const RBAddGame = () => {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-4">
+          <div className="mt-5 grid gap-3 md:grid-cols-5">
             <ToggleCard
               title="Bulk HOT"
               subtitle="Apply when adding games"
               checked={form.isHot}
               icon={Flame}
-              onChange={(value) => setForm((prev) => ({ ...prev, isHot: value }))}
+              onChange={(value) =>
+                setForm((prev) => ({ ...prev, isHot: value }))
+              }
             />
 
             <ToggleCard
@@ -736,7 +821,9 @@ const RBAddGame = () => {
               subtitle="Apply when adding games"
               checked={form.isNew}
               icon={Star}
-              onChange={(value) => setForm((prev) => ({ ...prev, isNew: value }))}
+              onChange={(value) =>
+                setForm((prev) => ({ ...prev, isNew: value }))
+              }
             />
 
             <ToggleCard
@@ -750,10 +837,36 @@ const RBAddGame = () => {
             />
 
             <div>
+              <label className={labelClass}>Oracle Image Type</label>
+              <select
+                value={form.oracleImageType}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    oracleImageType: e.target.value,
+                  }))
+                }
+                className={inputClass}
+              >
+                <option className="bg-[#030712]" value="thumbnail">
+                  Thumbnail
+                </option>
+                <option className="bg-[#030712]" value="height">
+                  Height
+                </option>
+                <option className="bg-[#030712]" value="original">
+                  Original
+                </option>
+              </select>
+            </div>
+
+            <div>
               <label className={labelClass}>Bulk Status</label>
               <select
                 value={form.status}
-                onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, status: e.target.value }))
+                }
                 className={inputClass}
               >
                 <option className="bg-[#030712]" value="active">
@@ -774,6 +887,7 @@ const RBAddGame = () => {
 
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
                 className="cursor-pointer rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
@@ -782,6 +896,7 @@ const RBAddGame = () => {
               </button>
 
               <button
+                type="button"
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className="cursor-pointer rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
@@ -816,18 +931,21 @@ const RBAddGame = () => {
       ) : (
         <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {paginatedGames.map((game) => {
-            const selected = isGameSelected(game._id);
-            const selectedDoc = getSelectedGame(game._id);
+            const gameUId = getOracleGameId(game);
+            const selected = isGameSelected(gameUId);
+            const selectedDoc = getSelectedGame(gameUId);
 
-            const displayName = game.gameName || game.name || "Unnamed Game";
+            const displayName = game.name || "Unnamed Game";
+            const imageType =
+              selectedDoc?.oracleImageType || form.oracleImageType;
 
             const imageToShow = selectedDoc?.image
               ? fileUrl(selectedDoc.image)
-              : oracleImage(game);
+              : getOracleGameImage(game, imageType);
 
             return (
               <div
-                key={game._id}
+                key={gameUId}
                 className={`overflow-hidden rounded-[28px] border bg-black/25 shadow-xl transition hover:-translate-y-1 ${
                   selected
                     ? "border-emerald-300/50 shadow-emerald-950/30"
@@ -839,7 +957,7 @@ const RBAddGame = () => {
                     <img
                       src={imageToShow}
                       alt={displayName}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
                       }}
@@ -885,8 +1003,15 @@ const RBAddGame = () => {
                   </h3>
 
                   <div className="mt-3 space-y-1 text-xs text-slate-500">
-                    <p className="truncate">gameId: {game._id}</p>
-                    <p className="truncate">game_code: {game.game_code || "—"}</p>
+                    <p className="truncate">game_uid: {gameUId || "—"}</p>
+                    <p className="truncate">
+                      Provider: {game.provider || selectedProviderCode || "—"}
+                    </p>
+                    <p className="truncate">Category: {game.category || "—"}</p>
+                    <p className="truncate">
+                      Image Type:{" "}
+                      {selectedDoc?.oracleImageType || form.oracleImageType}
+                    </p>
                   </div>
 
                   {!selected && (
@@ -920,13 +1045,14 @@ const RBAddGame = () => {
                       )}
 
                       <p className="mt-2 text-xs text-slate-500">
-                        If no upload, Oracle image will display only from API,
-                        not save in DB.
+                        Custom image save হবে। Oracle image URL DB-তে save হবে
+                        না।
                       </p>
                     </div>
                   )}
 
                   <button
+                    type="button"
                     onClick={() => handleSelectGame(game)}
                     className={`mt-5 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition ${
                       selected
@@ -949,6 +1075,7 @@ const RBAddGame = () => {
 
                   {selected && (
                     <button
+                      type="button"
                       onClick={() => openEditModal(selectedDoc, game)}
                       className="mt-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm font-black text-cyan-100 hover:bg-cyan-300/15"
                     >
@@ -966,6 +1093,7 @@ const RBAddGame = () => {
       {providerGames.length > 0 && (
         <div className="flex flex-wrap items-center justify-center gap-3 rounded-[24px] border border-white/10 bg-white/[0.06] p-4">
           <button
+            type="button"
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage === 1}
             className="cursor-pointer rounded-xl border border-white/10 bg-white/10 px-5 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
@@ -978,6 +1106,7 @@ const RBAddGame = () => {
           </span>
 
           <button
+            type="button"
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage === totalPages}
             className="cursor-pointer rounded-xl border border-white/10 bg-white/10 px-5 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
@@ -994,11 +1123,12 @@ const RBAddGame = () => {
               <div>
                 <h2 className="text-xl font-black">Edit RB Game</h2>
                 <p className="text-sm text-slate-400">
-                  Update custom image, flags and status
+                  Update custom image, Oracle image type, flags and status.
                 </p>
               </div>
 
               <button
+                type="button"
                 onClick={closeModal}
                 className="cursor-pointer rounded-xl bg-white/10 p-2 hover:bg-white/15"
               >
@@ -1023,6 +1153,30 @@ const RBAddGame = () => {
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>Oracle Image Type</label>
+                <select
+                  value={editForm.oracleImageType}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      oracleImageType: e.target.value,
+                    }))
+                  }
+                  className={inputClass}
+                >
+                  <option className="bg-[#030712]" value="thumbnail">
+                    Thumbnail
+                  </option>
+                  <option className="bg-[#030712]" value="height">
+                    Height
+                  </option>
+                  <option className="bg-[#030712]" value="original">
+                    Original
+                  </option>
+                </select>
               </div>
 
               <div>
@@ -1083,7 +1237,10 @@ const RBAddGame = () => {
                 <select
                   value={editForm.status}
                   onChange={(e) =>
-                    setEditForm((prev) => ({ ...prev, status: e.target.value }))
+                    setEditForm((prev) => ({
+                      ...prev,
+                      status: e.target.value,
+                    }))
                   }
                   className={inputClass}
                 >

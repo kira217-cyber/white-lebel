@@ -16,14 +16,24 @@ const masterRBGameSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Oracle game._id only
-    gameId: {
+    // Oracle game_uid
+    gameUId: {
       type: String,
       required: true,
       trim: true,
+      index: true,
     },
 
-    // only custom uploaded image will save here
+    // Oracle image URL DB te save hobe na.
+    // New Oracle image keys: original, height, thumbnail
+    oracleImageType: {
+      type: String,
+      enum: ["thumbnail", "height", "original"],
+      default: "thumbnail",
+      index: true,
+    },
+
+    // Only custom uploaded image save hobe
     image: {
       type: String,
       default: "",
@@ -59,6 +69,7 @@ const masterRBGameSchema = new mongoose.Schema(
       type: String,
       enum: ["pending", "synced", "failed"],
       default: "pending",
+      index: true,
     },
 
     lastSyncedAt: {
@@ -66,13 +77,14 @@ const masterRBGameSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-masterRBGameSchema.index(
-  { providerDbId: 1, gameId: 1 },
-  { unique: true }
-);
+masterRBGameSchema.index({ providerDbId: 1, gameUId: 1 }, { unique: true });
+
+masterRBGameSchema.index({
+  gameUId: "text",
+});
 
 const MasterRBGame = mongoose.model("MasterRBGame", masterRBGameSchema);
 

@@ -9,16 +9,21 @@ const masterRBGameProviderSchema = new mongoose.Schema(
       index: true,
     },
 
+    // ✅ Oracle provider code => PG
+    providerCode: {
+      type: String,
+      required: true,
+      trim: true,
+      uppercase: true,
+      index: true,
+    },
+
+    // ✅ Oracle provider name => PGSoft
     providerName: {
       type: String,
       required: true,
       trim: true,
-    },
-
-    providerId: {
-      type: String,
-      required: true,
-      trim: true,
+      index: true,
     },
 
     providerImage: {
@@ -56,6 +61,7 @@ const masterRBGameProviderSchema = new mongoose.Schema(
       type: String,
       enum: ["pending", "synced", "failed"],
       default: "pending",
+      index: true,
     },
 
     lastSyncedAt: {
@@ -66,14 +72,22 @@ const masterRBGameProviderSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+/* ======================================================
+   UNIQUE CATEGORY + PROVIDER CODE
+====================================================== */
+
 masterRBGameProviderSchema.index(
-  { categoryId: 1, providerId: 1 },
+  { categoryId: 1, providerCode: 1 },
   { unique: true },
 );
 
+/* ======================================================
+   SEARCH INDEX
+====================================================== */
+
 masterRBGameProviderSchema.index({
   providerName: "text",
-  providerId: "text",
+  providerCode: "text",
 });
 
 const MasterRBGameProvider = mongoose.model(
