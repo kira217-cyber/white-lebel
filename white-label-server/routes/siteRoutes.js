@@ -1,8 +1,5 @@
 import express from "express";
-import crypto from "crypto";
-
 import WhiteLabelSite from "../models/WhiteLabelSite.js";
-
 import { protectMasterAdmin } from "../middleware/authMiddleware.js";
 import { errorResponse, successResponse } from "../utils/response.js";
 import { upload } from "../config/multer.js";
@@ -23,32 +20,36 @@ const filePath = (file) => {
 ====================================================== */
 
 const generateApiToken = (length = 20) => {
-  return crypto
-    .randomBytes(48)
-    .toString("base64url")
-    .replace(/[^a-zA-Z0-9]/g, "")
-    .slice(0, length);
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+  let token = "";
+
+  for (let i = 0; i < length; i += 1) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  return token;
 };
 
 const makeTokenPreview = (token = "") => {
   if (!token) return "";
-
   return `${token.slice(0, 4)}********${token.slice(-4)}`;
 };
 
 const createUniqueToken = async () => {
   let token = generateApiToken(20);
 
-  let exists = await WhiteLabelSite.findOne({
-    apiToken: token,
-  }).select("+apiToken");
+  let exists = await WhiteLabelSite.findOne({ apiToken: token }).select(
+    "+apiToken",
+  );
 
   while (exists) {
     token = generateApiToken(20);
 
-    exists = await WhiteLabelSite.findOne({
-      apiToken: token,
-    }).select("+apiToken");
+    exists = await WhiteLabelSite.findOne({ apiToken: token }).select(
+      "+apiToken",
+    );
   }
 
   return token;
@@ -77,7 +78,6 @@ router.post("/verify-token", async (req, res) => {
     }
 
     site.lastTokenVerifiedAt = new Date();
-
     await site.save();
 
     return successResponse(res, "API token verified successfully.", {
@@ -133,20 +133,14 @@ router.post(
         adminPassword,
         note,
         status: status || "active",
-
         logo: filePath(req.file),
-
         apiToken,
-
         apiTokenPreview: makeTokenPreview(apiToken),
-
         tokenActive: true,
-
         apiTokenLastGeneratedAt: new Date(),
       });
 
       const safeSite = site.toObject();
-
       delete safeSite.apiToken;
 
       return successResponse(
@@ -190,21 +184,18 @@ router.get("/", protectMasterAdmin, async (req, res) => {
             $options: "i",
           },
         },
-
         {
           adminEmail: {
             $regex: search,
             $options: "i",
           },
         },
-
         {
           clientUrl: {
             $regex: search,
             $options: "i",
           },
         },
-
         {
           adminLoginUrl: {
             $regex: search,
@@ -215,9 +206,7 @@ router.get("/", protectMasterAdmin, async (req, res) => {
     }
 
     const pageNum = Math.max(Number(page) || 1, 1);
-
     const limitNum = Math.max(Number(limit) || 15, 1);
-
     const skip = (pageNum - 1) * limitNum;
 
     const [sites, total] = await Promise.all([
@@ -225,13 +214,11 @@ router.get("/", protectMasterAdmin, async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNum),
-
       WhiteLabelSite.countDocuments(query),
     ]);
 
     return successResponse(res, "Sites fetched successfully.", {
       sites,
-
       meta: {
         page: pageNum,
         limit: limitNum,
@@ -261,15 +248,10 @@ router.get("/:id/token", protectMasterAdmin, async (req, res) => {
     return successResponse(res, "API token fetched successfully.", {
       siteId: site._id,
       siteName: site.siteName,
-
       apiToken: site.apiToken,
-
       apiTokenPreview: site.apiTokenPreview,
-
       tokenActive: site.tokenActive,
-
       status: site.status,
-
       apiTokenLastGeneratedAt: site.apiTokenLastGeneratedAt,
     });
   } catch (error) {
@@ -294,28 +276,19 @@ router.post("/:id/regenerate-token", protectMasterAdmin, async (req, res) => {
     const newToken = await createUniqueToken();
 
     site.apiToken = newToken;
-
     site.apiTokenPreview = makeTokenPreview(newToken);
-
     site.tokenActive = true;
-
     site.apiTokenLastGeneratedAt = new Date();
-
     site.lastTokenVerifiedAt = null;
 
     await site.save();
 
     return successResponse(res, "API token regenerated successfully.", {
       siteId: site._id,
-
       siteName: site.siteName,
-
       apiToken: newToken,
-
       apiTokenPreview: site.apiTokenPreview,
-
       tokenActive: site.tokenActive,
-
       apiTokenLastGeneratedAt: site.apiTokenLastGeneratedAt,
     });
   } catch (error) {
@@ -457,14 +430,11 @@ router.post("/:id/open-admin", protectMasterAdmin, async (req, res) => {
     }
 
     site.lastLoginAt = new Date();
-
     await site.save();
 
     return successResponse(res, "Admin login info fetched.", {
       adminLoginUrl: site.adminLoginUrl,
-
       adminEmail: site.adminEmail,
-
       adminPassword: site.adminPassword,
     });
   } catch (error) {

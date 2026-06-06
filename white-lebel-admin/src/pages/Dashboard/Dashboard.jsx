@@ -85,7 +85,7 @@ const Dashboard = () => {
             </div>
 
             <h1 className="text-3xl font-black md:text-4xl">
-              Welcome,{" "}
+              Welcome, Demo Site{" "}
               <span className="bg-gradient-to-r from-cyan-200 to-emerald-200 bg-clip-text text-transparent">
                 {admin?.name || "Master Admin"}
               </span>

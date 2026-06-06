@@ -1,10 +1,11 @@
 import express from "express";
 import axios from "axios";
+
 import WhiteLabelSite from "../models/WhiteLabelSite.js";
-import MasterRBGameCategory from "../models/MasterRBGameCategory.js";
-import MasterRBGameProvider from "../models/MasterRBGameProvider.js";
-import MasterRBGame from "../models/MasterRBGame.js";
-import MasterRBLiveGame from "../models/MasterRBLiveGame.js";
+import MyGpCategory from "../models/MyGpCategory.js";
+import MasterMyGpGameProvider from "../models/MasterMyGpGameProvider.js";
+import MasterMyGpGame from "../models/MasterMyGpGame.js";
+import MasterMyGpSport from "../models/MasterMyGpSport.js";
 
 const router = express.Router();
 
@@ -18,12 +19,22 @@ const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
 const ok = (res, message, data = null, status = 200, extra = {}) => {
-  return res.status(status).json({ success: true, message, data, ...extra });
+  return res.status(status).json({
+    success: true,
+    message,
+    data,
+    ...extra,
+  });
 };
 
 const fail = (res, message, status = 500) => {
-  return res.status(status).json({ success: false, message });
+  return res.status(status).json({
+    success: false,
+    message,
+  });
 };
+
+const cleanText = (value = "") => String(value || "").trim();
 
 const getToken = (req) => {
   return (
@@ -43,14 +54,17 @@ const getPagination = (req) => {
     Math.max(Number(req.query.limit) || DEFAULT_LIMIT, 1),
     MAX_LIMIT,
   );
-  const skip = (page - 1) * limit;
 
-  return { page, limit, skip };
+  return {
+    page,
+    limit,
+    skip: (page - 1) * limit,
+  };
 };
 
 const verifyWhiteLabelToken = async (req, res, next) => {
   try {
-    const token = String(getToken(req) || "").trim();
+    const token = cleanText(getToken(req));
 
     if (!token) {
       return fail(res, "API token is required.", 401);
@@ -86,8 +100,6 @@ const chunkArray = (arr = [], size = 100) => {
   return chunks;
 };
 
-const cleanText = (value = "") => String(value || "").trim();
-
 const cleanOracleImageType = (type = "thumbnail") => {
   if (["thumbnail", "height", "original"].includes(type)) return type;
   return "thumbnail";
@@ -113,11 +125,6 @@ const fetchOracleGamesByUIds = async (gameUIds = []) => {
   ];
 
   if (!cleanIds.length) return new Map();
-
-  if (!ORACLE_GAME_DATA_KEY) {
-    console.log("ORACLE_GAME_DATA_KEY missing in .env");
-    return new Map();
-  }
 
   const chunks = chunkArray(cleanIds, 100);
   const allGames = [];
@@ -178,6 +185,7 @@ const normalizeGame = (game, oracleMap) => {
     gameId: game.gameUId,
 
     gameName: oracle.gameName || game.gameUId,
+    name: oracle.gameName || game.gameUId,
 
     provider: oracle.provider || game.providerDbId?.providerCode || "",
     category: oracle.category || "",
@@ -193,19 +201,44 @@ const normalizeGame = (game, oracleMap) => {
 
     oracleImageType,
 
-    isHot: game.isHot,
-    isNew: game.isNew,
-    isJackpot: game.isJackpot,
+    isHot: Boolean(game.isHot),
+    isJili: Boolean(game.isJili),
+    isPg: Boolean(game.isPg),
+    isPoker: Boolean(game.isPoker),
+    isCrash: Boolean(game.isCrash),
+    isLiveCasino: Boolean(game.isLiveCasino),
+    isFish: Boolean(game.isFish),
+    isFavorites: Boolean(game.isFavorites),
+    isLatest: Boolean(game.isLatest),
+    isAZ: Boolean(game.isAZ),
 
     status: game.status,
     createdAt: game.createdAt,
   };
 };
 
-/* VERIFY TOKEN */
+const buildPagination = ({ page, limit, total }) => {
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const hasMore = page < totalPages;
+
+  return {
+    page,
+    limit,
+    total,
+    totalPages,
+    hasMore,
+    nextPage: hasMore ? page + 1 : null,
+  };
+};
+
+/* ======================================================
+   VERIFY TOKEN
+   POST /api/white-label/mygp/verify-token
+====================================================== */
+
 router.post("/verify-token", async (req, res) => {
   try {
-    const token = String(req.body?.token || req.body?.apiKey || "").trim();
+    const token = cleanText(req.body?.token || req.body?.apiKey);
 
     if (!token) {
       return fail(res, "API token is required.", 400);
@@ -233,16 +266,20 @@ router.post("/verify-token", async (req, res) => {
   }
 });
 
-/* GAME MENU */
+/* ======================================================
+   GAME MENU
+   GET /api/white-label/mygp/game-menu
+====================================================== */
+
 router.get("/game-menu", verifyWhiteLabelToken, async (req, res) => {
   try {
-    const categories = await MasterRBGameCategory.find({ status: "active" })
+    const categories = await MyGpCategory.find({ status: "active" })
       .sort({ order: 1, createdAt: 1 })
       .lean();
 
     const categoryIds = categories.map((item) => item._id);
 
-    const providers = await MasterRBGameProvider.find({
+    const providers = await MasterMyGpGameProvider.find({
       status: "active",
       categoryId: { $in: categoryIds },
     })
@@ -261,6 +298,7 @@ router.get("/game-menu", verifyWhiteLabelToken, async (req, res) => {
         providerCode: provider.providerCode,
         providerImage: provider.providerImage,
         providerIcon: provider.providerIcon,
+        isHome: provider.isHome,
         status: provider.status,
       });
 
@@ -271,25 +309,43 @@ router.get("/game-menu", verifyWhiteLabelToken, async (req, res) => {
       _id: cat._id,
       categoryName: cat.categoryName,
       categoryTitle: cat.categoryTitle,
-      bannerImage: cat.bannerImage,
       iconImage: cat.iconImage,
       order: cat.order,
-      badge: cat.jackpot ? "hot" : "none",
-      jackpot: cat.jackpot,
       status: cat.status,
       providers: providerMap[String(cat._id)] || [],
     }));
 
-    return ok(res, "White label game menu fetched successfully.", menu);
+    return ok(res, "MyGP game menu fetched successfully.", menu);
   } catch (error) {
     return fail(res, error.message || "Server error", 500);
   }
 });
 
-/* SINGLE CATEGORY */
+/* ======================================================
+   CATEGORIES
+   GET /api/white-label/mygp/game-categories
+====================================================== */
+
+router.get("/game-categories", verifyWhiteLabelToken, async (req, res) => {
+  try {
+    const categories = await MyGpCategory.find({ status: "active" })
+      .sort({ order: 1, createdAt: -1 })
+      .lean();
+
+    return ok(res, "MyGP categories fetched successfully.", categories);
+  } catch (error) {
+    return fail(res, error.message || "Server error", 500);
+  }
+});
+
+/* ======================================================
+   SINGLE CATEGORY
+   GET /api/white-label/mygp/game-categories/:id
+====================================================== */
+
 router.get("/game-categories/:id", verifyWhiteLabelToken, async (req, res) => {
   try {
-    const category = await MasterRBGameCategory.findOne({
+    const category = await MyGpCategory.findOne({
       _id: req.params.id,
       status: "active",
     }).lean();
@@ -298,23 +354,15 @@ router.get("/game-categories/:id", verifyWhiteLabelToken, async (req, res) => {
       return fail(res, "Category not found.", 404);
     }
 
-    const providers = await MasterRBGameProvider.find({
+    const providers = await MasterMyGpGameProvider.find({
       categoryId: category._id,
       status: "active",
     })
       .sort({ createdAt: -1 })
       .lean();
 
-    return ok(res, "White label category fetched successfully.", {
-      _id: category._id,
-      categoryName: category.categoryName,
-      categoryTitle: category.categoryTitle,
-      bannerImage: category.bannerImage,
-      iconImage: category.iconImage,
-      order: category.order,
-      jackpot: category.jackpot,
-      badge: category.jackpot ? "hot" : "none",
-      status: category.status,
+    return ok(res, "MyGP category fetched successfully.", {
+      ...category,
       providers: providers.map((provider) => ({
         _id: provider._id,
         categoryId: provider.categoryId,
@@ -322,6 +370,7 @@ router.get("/game-categories/:id", verifyWhiteLabelToken, async (req, res) => {
         providerCode: provider.providerCode,
         providerImage: provider.providerImage,
         providerIcon: provider.providerIcon,
+        isHome: provider.isHome,
         status: provider.status,
       })),
     });
@@ -330,34 +379,93 @@ router.get("/game-categories/:id", verifyWhiteLabelToken, async (req, res) => {
   }
 });
 
-/* GAMES - PAGINATED */
+/* ======================================================
+   PROVIDERS
+   GET /api/white-label/mygp/game-providers
+====================================================== */
+
+router.get("/game-providers", verifyWhiteLabelToken, async (req, res) => {
+  try {
+    const { categoryId = "", status = "active", isHome = "" } = req.query || {};
+
+    const query = {};
+
+    if (categoryId) query.categoryId = categoryId;
+    if (status) query.status = status;
+    if (isHome === "true" || isHome === "false") {
+      query.isHome = isHome === "true";
+    }
+
+    const providers = await MasterMyGpGameProvider.find(query)
+      .populate("categoryId", "categoryName categoryTitle iconImage status")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return ok(res, "MyGP providers fetched successfully.", providers);
+  } catch (error) {
+    return fail(res, error.message || "Server error", 500);
+  }
+});
+
+/* ======================================================
+   GAMES - FAST PAGINATED
+   First request default 50.
+   Frontend hiddenly call nextPage while hasMore true.
+   GET /api/white-label/mygp/games?page=1&limit=50
+====================================================== */
+
 router.get("/games", verifyWhiteLabelToken, async (req, res) => {
   try {
-    const { categoryId = "", providerDbId = "" } = req.query || {};
+    const {
+      categoryId = "",
+      providerDbId = "",
+      status = "active",
+      gameUId = "",
+    } = req.query || {};
+
     const { page, limit, skip } = getPagination(req);
 
-    if (!categoryId) {
-      return fail(res, "categoryId is required.", 400);
+    const query = {};
+
+    if (categoryId) query.categoryId = categoryId;
+    if (providerDbId) query.providerDbId = providerDbId;
+    if (status) query.status = status;
+
+    if (gameUId) {
+      query.gameUId = { $regex: gameUId, $options: "i" };
     }
 
-    const query = {
-      categoryId,
-      status: "active",
-    };
+    const flagFields = [
+      "isHot",
+      "isJili",
+      "isPg",
+      "isPoker",
+      "isCrash",
+      "isLiveCasino",
+      "isFish",
+      "isFavorites",
+      "isLatest",
+      "isAZ",
+    ];
 
-    if (providerDbId) {
-      query.providerDbId = providerDbId;
-    }
+    flagFields.forEach((field) => {
+      if (req.query[field] === "true" || req.query[field] === "false") {
+        query[field] = req.query[field] === "true";
+      }
+    });
 
     const [games, total] = await Promise.all([
-      MasterRBGame.find(query)
-        .populate("providerDbId", "providerName providerCode status")
+      MasterMyGpGame.find(query)
+        .populate(
+          "providerDbId",
+          "providerName providerCode providerIcon providerImage status",
+        )
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
 
-      MasterRBGame.countDocuments(query),
+      MasterMyGpGame.countDocuments(query),
     ]);
 
     const gameUIds = games
@@ -368,43 +476,76 @@ router.get("/games", verifyWhiteLabelToken, async (req, res) => {
 
     const data = games.map((game) => normalizeGame(game, oracleMap));
 
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-    const hasMore = page < totalPages;
-
-    return ok(res, "White label games fetched successfully.", data, 200, {
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasMore,
-        nextPage: hasMore ? page + 1 : null,
-      },
+    return ok(res, "MyGP games fetched successfully.", data, 200, {
+      pagination: buildPagination({ page, limit, total }),
     });
   } catch (error) {
     return fail(res, error.message || "Server error", 500);
   }
 });
 
-/* HOT GAMES - PAGINATED */
+/* ======================================================
+   HOT GAMES
+   GET /api/white-label/mygp/hot-games?page=1&limit=50
+====================================================== */
+
 router.get("/hot-games", verifyWhiteLabelToken, async (req, res) => {
+  req.query.isHot = "true";
+  return router.handle(
+    Object.assign(req, {
+      url: "/games",
+      originalUrl: "/games",
+    }),
+    res,
+  );
+});
+
+/* ======================================================
+   FLAG GAMES
+   GET /api/white-label/mygp/flag-games/:flag?page=1&limit=50
+   flags: isJili,isPg,isPoker,isCrash,isLiveCasino,isFish,isFavorites,isLatest,isAZ
+====================================================== */
+
+router.get("/flag-games/:flag", verifyWhiteLabelToken, async (req, res) => {
   try {
+    const allowedFlags = [
+      "isHot",
+      "isJili",
+      "isPg",
+      "isPoker",
+      "isCrash",
+      "isLiveCasino",
+      "isFish",
+      "isFavorites",
+      "isLatest",
+      "isAZ",
+    ];
+
+    const flag = cleanText(req.params.flag);
+
+    if (!allowedFlags.includes(flag)) {
+      return fail(res, "Invalid game flag.", 400);
+    }
+
     const { page, limit, skip } = getPagination(req);
 
     const query = {
       status: "active",
-      isHot: true,
+      [flag]: true,
     };
 
     const [games, total] = await Promise.all([
-      MasterRBGame.find(query)
-        .populate("providerDbId", "providerName providerCode status")
+      MasterMyGpGame.find(query)
+        .populate(
+          "providerDbId",
+          "providerName providerCode providerIcon providerImage status",
+        )
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
 
-      MasterRBGame.countDocuments(query),
+      MasterMyGpGame.countDocuments(query),
     ]);
 
     const gameUIds = games
@@ -415,45 +556,26 @@ router.get("/hot-games", verifyWhiteLabelToken, async (req, res) => {
 
     const data = games.map((game) => normalizeGame(game, oracleMap));
 
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-    const hasMore = page < totalPages;
-
-    return ok(res, "White label hot games fetched successfully.", data, 200, {
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasMore,
-        nextPage: hasMore ? page + 1 : null,
-      },
+    return ok(res, "MyGP flag games fetched successfully.", data, 200, {
+      pagination: buildPagination({ page, limit, total }),
     });
   } catch (error) {
     return fail(res, error.message || "Server error", 500);
   }
 });
 
-/* LIVE GAME GLOBAL */
-router.get("/live-game", verifyWhiteLabelToken, async (req, res) => {
+/* ======================================================
+   SPORTS
+   GET /api/white-label/mygp/sports
+====================================================== */
+
+router.get("/sports", verifyWhiteLabelToken, async (req, res) => {
   try {
-    const config = await MasterRBLiveGame.findOne().lean();
+    const sports = await MasterMyGpSport.find({ isActive: true })
+      .sort({ order: 1, createdAt: -1 })
+      .lean();
 
-    if (!config) {
-      return ok(res, "Live game config fetched successfully.", {
-        gameUID: "",
-        isActive: false,
-        openInNewTab: true,
-      });
-    }
-
-    return ok(res, "Live game config fetched successfully.", {
-      _id: config._id,
-      gameUID: config.gameUID,
-      isActive: config.isActive,
-      openInNewTab: config.openInNewTab,
-      note: config.note || "",
-      updatedAt: config.updatedAt,
-    });
+    return ok(res, "MyGP sports fetched successfully.", sports);
   } catch (error) {
     return fail(res, error.message || "Server error", 500);
   }

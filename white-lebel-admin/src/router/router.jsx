@@ -14,6 +14,10 @@ import RBAddGame from "../pages/RBGameRelatedPages/RBAddGame";
 import RBAddLiveGame from "../pages/RBGameRelatedPages/RBAddLiveGame";
 import RBAddProvider from "../pages/RBGameRelatedPages/RBAddProvider";
 import RBAddCategory from "../pages/RBGameRelatedPages/RBAddCategory";
+import MyGpAddCategory from "../pages/MyGpGameRelatedPages/MyGpAddCategory";
+import MyGpAddGame from "../pages/MyGpGameRelatedPages/MyGpAddGame";
+import MyGpAddSports from "../pages/MyGpGameRelatedPages/MyGpAddSports";
+import MyGpAddProvider from "../pages/MyGpGameRelatedPages/MyGpAddProvider";
 
 export const routes = createBrowserRouter([
   {
@@ -68,7 +72,23 @@ export const routes = createBrowserRouter([
           {
             path: "rb-add-category",
             element: <RBAddCategory />,
-          }
+          },
+          {
+            path: "my-gp-add-category",
+            element: <MyGpAddCategory />,
+          },
+          {
+            path: "my-gp-add-provider",
+            element: <MyGpAddProvider />,
+          },
+          {
+            path: "my-gp-add-game",
+            element: <MyGpAddGame />,
+          },
+          {
+            path: "my-gp-add-sports",
+            element: <MyGpAddSports />,
+          },
         ],
       },
     ],

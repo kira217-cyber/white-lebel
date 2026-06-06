@@ -9,35 +9,53 @@ import {
   RefreshCw,
   Search,
   Sparkles,
-  Star,
   Trash2,
-  Trophy,
   UploadCloud,
   X,
+  Dice5,
+  Fish,
+  Zap,
+  Heart,
+  BadgePlus,
+  ArrowDownAZ,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { api } from "../../api/axios";
 
 const API_URL = import.meta.env.VITE_API_URL;
-
 const GAMES_PER_PAGE = 50;
+
+const FLAG_FIELDS = [
+  { key: "isHot", title: "HOT", icon: Flame },
+  { key: "isJili", title: "JILI", icon: Gamepad2 },
+  { key: "isPg", title: "PG", icon: Dice5 },
+  { key: "isPoker", title: "Poker", icon: Dice5 },
+  { key: "isCrash", title: "Crash", icon: Zap },
+  { key: "isLiveCasino", title: "Live Casino", icon: Gamepad2 },
+  { key: "isFish", title: "Fish", icon: Fish },
+  { key: "isFavorites", title: "Favorites", icon: Heart },
+  { key: "isLatest", title: "Latest", icon: BadgePlus },
+  { key: "isAZ", title: "A-Z", icon: ArrowDownAZ },
+];
+
+const getDefaultFlags = () =>
+  FLAG_FIELDS.reduce((acc, item) => {
+    acc[item.key] = false;
+    return acc;
+  }, {});
 
 const initialAddFlags = {
   image: null,
   oracleImageType: "thumbnail",
-  isHot: false,
-  isNew: false,
-  isJackpot: false,
   status: "active",
+  ...getDefaultFlags(),
 };
 
 const initialEditFlags = {
   image: null,
   oracleImageType: "thumbnail",
-  isHot: false,
-  isNew: false,
-  isJackpot: false,
   status: "active",
+  ...getDefaultFlags(),
 };
 
 const fileUrl = (path = "") => {
@@ -65,22 +83,10 @@ const getOracleGameImage = (game, type = "thumbnail") => {
     return game?.height || images?.height || game?.raw?.height || "";
   }
 
-  if (type === "thumbnail") {
-    return (
-      game?.thumbnail ||
-      images?.thumbnail ||
-      game?.raw?.thumbnail ||
-      game?.original ||
-      images?.original ||
-      ""
-    );
-  }
-
   return (
     game?.thumbnail ||
     images?.thumbnail ||
-    game?.height ||
-    images?.height ||
+    game?.raw?.thumbnail ||
     game?.original ||
     images?.original ||
     ""
@@ -116,7 +122,7 @@ const normalizeOracleGames = (payload) => {
     }));
 };
 
-const RBAddGame = () => {
+const MyGpAddGame = () => {
   const [categories, setCategories] = useState([]);
   const [providers, setProviders] = useState([]);
 
@@ -133,7 +139,6 @@ const RBAddGame = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [bulkLoading, setBulkLoading] = useState(false);
-
   const [searchGame, setSearchGame] = useState("");
 
   const [form, setForm] = useState(initialAddFlags);
@@ -165,14 +170,18 @@ const RBAddGame = () => {
     try {
       setLoadingCategories(true);
 
-      const res = await api.get("/api/master/rb-game-categories", {
+      const res = await api.get("/api/mygp-categories/admin/all", {
         params: { limit: 200, status: "active" },
       });
 
-      setCategories(res.data?.data?.categories || []);
+      const list = res.data?.data?.categories || res.data?.data || [];
+
+      setCategories(
+        list.filter((item) => !item.status || item.status === "active"),
+      );
     } catch (error) {
       toast.error(
-        error?.response?.data?.message || "Failed to load categories",
+        error?.response?.data?.message || "Failed to load MyGP categories",
       );
     } finally {
       setLoadingCategories(false);
@@ -189,7 +198,7 @@ const RBAddGame = () => {
     try {
       setLoadingProviders(true);
 
-      const res = await api.get("/api/master/rb-game-providers", {
+      const res = await api.get("/api/master/mygp-game-providers", {
         params: { categoryId, limit: 200, status: "active" },
       });
 
@@ -210,7 +219,7 @@ const RBAddGame = () => {
     try {
       setLoadingSelectedGames(true);
 
-      const res = await api.get("/api/master/rb-games", {
+      const res = await api.get("/api/master/mygp-games", {
         params: { providerDbId, limit: 10000 },
       });
 
@@ -235,7 +244,7 @@ const RBAddGame = () => {
       setLoadingGames(true);
 
       const res = await api.get(
-        `/api/master/rb-games/oracle/${selectedProviderCode}`,
+        `/api/master/mygp-games/oracle/${selectedProviderCode}`,
       );
 
       const games = normalizeOracleGames(res.data?.data || res.data);
@@ -333,8 +342,10 @@ const RBAddGame = () => {
     Math.ceil(filteredOracleGames.length / GAMES_PER_PAGE) || 1;
 
   const startIndex = (currentPage - 1) * GAMES_PER_PAGE;
-  const endIndex = startIndex + GAMES_PER_PAGE;
-  const paginatedGames = filteredOracleGames.slice(startIndex, endIndex);
+  const paginatedGames = filteredOracleGames.slice(
+    startIndex,
+    startIndex + GAMES_PER_PAGE,
+  );
 
   const isGameSelected = (gameUId) => {
     return selectedGames.some(
@@ -364,6 +375,18 @@ const RBAddGame = () => {
     setCurrentPage(page);
   };
 
+  const appendGameFormData = (fd, gameUId, flags = form) => {
+    fd.append("categoryId", selectedCategoryId);
+    fd.append("providerDbId", selectedProviderDbId);
+    fd.append("gameUId", gameUId);
+    fd.append("oracleImageType", flags.oracleImageType || "thumbnail");
+    fd.append("status", flags.status || "active");
+
+    FLAG_FIELDS.forEach((item) => {
+      fd.append(item.key, String(Boolean(flags[item.key])));
+    });
+  };
+
   const handleSelectGame = async (game) => {
     if (!selectedCategoryId) return toast.error("Please select category");
     if (!selectedProviderDbId) return toast.error("Please select provider");
@@ -381,7 +404,7 @@ const RBAddGame = () => {
           return toast.error("Selected game data not found");
         }
 
-        await api.delete(`/api/master/rb-games/${selectedDoc._id}`);
+        await api.delete(`/api/master/mygp-games/${selectedDoc._id}`);
 
         setSelectedGames((prev) =>
           prev.filter((item) => item._id !== selectedDoc._id),
@@ -393,20 +416,13 @@ const RBAddGame = () => {
 
       const fd = new FormData();
 
-      fd.append("categoryId", selectedCategoryId);
-      fd.append("providerDbId", selectedProviderDbId);
-      fd.append("gameUId", gameUId);
-      fd.append("oracleImageType", form.oracleImageType || "thumbnail");
-      fd.append("isHot", String(Boolean(form.isHot)));
-      fd.append("isNew", String(Boolean(form.isNew)));
-      fd.append("isJackpot", String(Boolean(form.isJackpot)));
-      fd.append("status", form.status || "active");
+      appendGameFormData(fd, gameUId);
 
       if (form.image instanceof File) {
         fd.append("image", form.image);
       }
 
-      const res = await api.post("/api/master/rb-games", fd, {
+      const res = await api.post("/api/master/mygp-games", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -440,18 +456,10 @@ const RBAddGame = () => {
         }
 
         const fd = new FormData();
-
-        fd.append("categoryId", selectedCategoryId);
-        fd.append("providerDbId", selectedProviderDbId);
-        fd.append("gameUId", gameUId);
-        fd.append("oracleImageType", form.oracleImageType || "thumbnail");
-        fd.append("isHot", String(Boolean(form.isHot)));
-        fd.append("isNew", String(Boolean(form.isNew)));
-        fd.append("isJackpot", String(Boolean(form.isJackpot)));
-        fd.append("status", form.status || "active");
+        appendGameFormData(fd, gameUId);
 
         try {
-          const res = await api.post("/api/master/rb-games", fd, {
+          const res = await api.post("/api/master/mygp-games", fd, {
             headers: { "Content-Type": "multipart/form-data" },
           });
 
@@ -490,7 +498,7 @@ const RBAddGame = () => {
         }
 
         try {
-          await api.delete(`/api/master/rb-games/${selectedDoc._id}`);
+          await api.delete(`/api/master/mygp-games/${selectedDoc._id}`);
 
           setSelectedGames((prev) =>
             prev.filter((item) => item._id !== selectedDoc._id),
@@ -518,13 +526,17 @@ const RBAddGame = () => {
       oracleGame,
     });
 
+    const flags = getDefaultFlags();
+
+    FLAG_FIELDS.forEach((item) => {
+      flags[item.key] = Boolean(selectedDoc[item.key]);
+    });
+
     setEditForm({
       image: null,
       oracleImageType: imageType,
-      isHot: Boolean(selectedDoc.isHot),
-      isNew: Boolean(selectedDoc.isNew),
-      isJackpot: Boolean(selectedDoc.isJackpot),
       status: selectedDoc.status || "active",
+      ...flags,
     });
 
     if (selectedDoc.image) {
@@ -552,18 +564,23 @@ const RBAddGame = () => {
       const fd = new FormData();
 
       fd.append("oracleImageType", editForm.oracleImageType || "thumbnail");
-      fd.append("isHot", String(Boolean(editForm.isHot)));
-      fd.append("isNew", String(Boolean(editForm.isNew)));
-      fd.append("isJackpot", String(Boolean(editForm.isJackpot)));
       fd.append("status", editForm.status || "active");
+
+      FLAG_FIELDS.forEach((item) => {
+        fd.append(item.key, String(Boolean(editForm[item.key])));
+      });
 
       if (editForm.image instanceof File) {
         fd.append("image", editForm.image);
       }
 
-      const res = await api.put(`/api/master/rb-games/${editingGame._id}`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await api.put(
+        `/api/master/mygp-games/${editingGame._id}`,
+        fd,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
 
       setSelectedGames((prev) =>
         prev.map((item) =>
@@ -583,7 +600,7 @@ const RBAddGame = () => {
 
     try {
       const res = await api.patch(
-        `/api/master/rb-games/${editingGame._id}/remove-image`,
+        `/api/master/mygp-games/${editingGame._id}/remove-image`,
       );
 
       setSelectedGames((prev) =>
@@ -630,15 +647,15 @@ const RBAddGame = () => {
             </div>
 
             <h1 className="text-3xl font-black md:text-4xl">
-              RB Game{" "}
+              MyGP Game{" "}
               <span className="bg-gradient-to-r from-cyan-200 to-emerald-200 bg-clip-text text-transparent">
                 Management
               </span>
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm text-slate-300">
-              Select RB category and provider, then add Oracle games. Oracle
-              image URL is not saved; only custom uploaded image is saved.
+              Select MyGP category and provider, then add Oracle games. Oracle
+              image URL DB-তে save হবে না; শুধু custom uploaded image save হবে।
             </p>
           </div>
 
@@ -666,7 +683,7 @@ const RBAddGame = () => {
 
         <div className="grid gap-5 md:grid-cols-2">
           <div>
-            <label className={labelClass}>Select RB Category</label>
+            <label className={labelClass}>Select MyGP Category</label>
 
             <select
               value={selectedCategoryId}
@@ -699,7 +716,7 @@ const RBAddGame = () => {
           </div>
 
           <div>
-            <label className={labelClass}>Select RB Provider</label>
+            <label className={labelClass}>Select MyGP Provider</label>
 
             <select
               value={selectedProviderDbId}
@@ -806,35 +823,18 @@ const RBAddGame = () => {
           </div>
 
           <div className="mt-5 grid gap-3 md:grid-cols-5">
-            <ToggleCard
-              title="Bulk HOT"
-              subtitle="Apply when adding games"
-              checked={form.isHot}
-              icon={Flame}
-              onChange={(value) =>
-                setForm((prev) => ({ ...prev, isHot: value }))
-              }
-            />
-
-            <ToggleCard
-              title="Bulk NEW"
-              subtitle="Apply when adding games"
-              checked={form.isNew}
-              icon={Star}
-              onChange={(value) =>
-                setForm((prev) => ({ ...prev, isNew: value }))
-              }
-            />
-
-            <ToggleCard
-              title="Bulk Jackpot"
-              subtitle="Apply when adding games"
-              checked={form.isJackpot}
-              icon={Trophy}
-              onChange={(value) =>
-                setForm((prev) => ({ ...prev, isJackpot: value }))
-              }
-            />
+            {FLAG_FIELDS.slice(0, 3).map((flag) => (
+              <ToggleCard
+                key={flag.key}
+                title={`Bulk ${flag.title}`}
+                subtitle="Apply when adding games"
+                checked={form[flag.key]}
+                icon={flag.icon}
+                onChange={(value) =>
+                  setForm((prev) => ({ ...prev, [flag.key]: value }))
+                }
+              />
+            ))}
 
             <div>
               <label className={labelClass}>Oracle Image Type</label>
@@ -878,33 +878,6 @@ const RBAddGame = () => {
               </select>
             </div>
           </div>
-
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-300/15 bg-cyan-300/10 px-4 py-3 text-sm text-cyan-100">
-            <span>
-              Page {currentPage} of {totalPages} • Showing{" "}
-              {paginatedGames.length} of {filteredOracleGames.length} games
-            </span>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => goToPage(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="cursor-pointer rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Previous
-              </button>
-
-              <button
-                type="button"
-                onClick={() => goToPage(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="cursor-pointer rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Next
-              </button>
-            </div>
-          </div>
         </section>
       )}
 
@@ -912,9 +885,6 @@ const RBAddGame = () => {
         <section className="rounded-[32px] border border-white/10 bg-white/[0.06] p-10 text-center shadow-2xl">
           <Gamepad2 className="mx-auto mb-4 h-14 w-14 text-slate-500" />
           <h3 className="text-xl font-black">Select category and provider</h3>
-          <p className="mt-2 text-sm text-slate-400">
-            After selecting provider, Oracle games will load here.
-          </p>
         </section>
       ) : loadingGames || loadingSelectedGames ? (
         <section className="flex min-h-[320px] items-center justify-center rounded-[32px] border border-white/10 bg-white/[0.06] p-10 shadow-2xl">
@@ -924,9 +894,6 @@ const RBAddGame = () => {
         <section className="rounded-[32px] border border-white/10 bg-white/[0.06] p-10 text-center shadow-2xl">
           <Gamepad2 className="mx-auto mb-4 h-14 w-14 text-slate-500" />
           <h3 className="text-xl font-black">No games available</h3>
-          <p className="mt-2 text-sm text-slate-400">
-            This provider currently has no Oracle games.
-          </p>
         </section>
       ) : (
         <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -934,7 +901,6 @@ const RBAddGame = () => {
             const gameUId = getOracleGameId(game);
             const selected = isGameSelected(gameUId);
             const selectedDoc = getSelectedGame(gameUId);
-
             const displayName = game.name || "Unnamed Game";
             const imageType =
               selectedDoc?.oracleImageType || form.oracleImageType;
@@ -977,23 +943,22 @@ const RBAddGame = () => {
                   )}
 
                   <div className="absolute left-3 top-3 flex flex-col gap-2">
-                    {(selected ? selectedDoc?.isHot : form.isHot) && (
-                      <span className="rounded-full bg-orange-500 px-3 py-1 text-xs font-black text-black">
-                        HOT
-                      </span>
-                    )}
+                    {FLAG_FIELDS.slice(0, 4).map((flag) => {
+                      const active = selected
+                        ? selectedDoc?.[flag.key]
+                        : form[flag.key];
 
-                    {(selected ? selectedDoc?.isNew : form.isNew) && (
-                      <span className="rounded-full bg-cyan-300 px-3 py-1 text-xs font-black text-black">
-                        NEW
-                      </span>
-                    )}
+                      if (!active) return null;
 
-                    {(selected ? selectedDoc?.isJackpot : form.isJackpot) && (
-                      <span className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-black text-white">
-                        JACKPOT
-                      </span>
-                    )}
+                      return (
+                        <span
+                          key={flag.key}
+                          className="rounded-full bg-cyan-300 px-3 py-1 text-xs font-black text-black"
+                        >
+                          {flag.title}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1043,11 +1008,6 @@ const RBAddGame = () => {
                           className="mt-3 h-28 w-full rounded-2xl object-cover"
                         />
                       )}
-
-                      <p className="mt-2 text-xs text-slate-500">
-                        Custom image save হবে। Oracle image URL DB-তে save হবে
-                        না।
-                      </p>
                     </div>
                   )}
 
@@ -1118,10 +1078,10 @@ const RBAddGame = () => {
 
       {isModalOpen && editingGame && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="max-h-[72vh] w-full max-w-[800px] overflow-y-auto rounded-[32px] border border-white/10 bg-[#030712] p-6 shadow-2xl">
+          <div className="max-h-[72vh] w-full max-w-[850px] overflow-y-auto rounded-[32px] border border-white/10 bg-[#030712] p-6 shadow-2xl">
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-black">Edit RB Game</h2>
+                <h2 className="text-xl font-black">Edit MyGP Game</h2>
                 <p className="text-sm text-slate-400">
                   Update custom image, Oracle image type, flags and status.
                 </p>
@@ -1199,36 +1159,22 @@ const RBAddGame = () => {
                 </label>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-3">
-                <ToggleCard
-                  title="HOT"
-                  subtitle="Show hot badge"
-                  checked={editForm.isHot}
-                  icon={Flame}
-                  onChange={(value) =>
-                    setEditForm((prev) => ({ ...prev, isHot: value }))
-                  }
-                />
-
-                <ToggleCard
-                  title="NEW"
-                  subtitle="Show new badge"
-                  checked={editForm.isNew}
-                  icon={Star}
-                  onChange={(value) =>
-                    setEditForm((prev) => ({ ...prev, isNew: value }))
-                  }
-                />
-
-                <ToggleCard
-                  title="Jackpot"
-                  subtitle="Show jackpot"
-                  checked={editForm.isJackpot}
-                  icon={Trophy}
-                  onChange={(value) =>
-                    setEditForm((prev) => ({ ...prev, isJackpot: value }))
-                  }
-                />
+              <div className="grid gap-3 md:grid-cols-2">
+                {FLAG_FIELDS.map((flag) => (
+                  <ToggleCard
+                    key={flag.key}
+                    title={flag.title}
+                    subtitle="Show badge / filter"
+                    checked={editForm[flag.key]}
+                    icon={flag.icon}
+                    onChange={(value) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        [flag.key]: value,
+                      }))
+                    }
+                  />
+                ))}
               </div>
 
               <div>
@@ -1316,4 +1262,4 @@ const ToggleCard = ({ title, subtitle, checked, onChange, icon: Icon }) => {
   );
 };
 
-export default RBAddGame;
+export default MyGpAddGame;

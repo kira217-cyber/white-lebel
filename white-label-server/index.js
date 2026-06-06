@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
-
 import authRoutes from "./routes/authRoutes.js";
 import siteRoutes from "./routes/siteRoutes.js";
 import masterRBGameCategoryRoutes from "./routes/masterRBGameCategoryRoutes.js";
@@ -11,6 +10,11 @@ import masterRBGameRoutes from "./routes/masterRBGameRoutes.js";
 import whiteLabelGamePublicRoutes from "./routes/whiteLabelGamePublicRoutes.js";
 import masterRBLiveGameRoutes from "./routes/masterRBLiveGameRoutes.js";
 import masterDashboardRoutes from "./routes/masterDashboardRoutes.js";
+import myGpCategoryRoutes from "./routes/myGpCategoryRoutes.js";
+import masterMyGpGameProviderRoutes from "./routes/masterMyGpGameProviderRoutes.js";
+import masterMyGpGameRoutes from "./routes/masterMyGpGameRoutes.js";
+import masterMyGpSportRoutes from "./routes/masterMyGpSportRoutes.js";
+import myGpWhiteLabelAccessRoutes from "./routes/myGpWhiteLabelAccessRoutes.js";
 
 
 dotenv.config();
@@ -39,6 +43,11 @@ app.use("/api/master/rb-games", masterRBGameRoutes);
 app.use("/api/white-label", whiteLabelGamePublicRoutes);
 app.use("/api/master-rb-live-game", masterRBLiveGameRoutes);
 app.use("/api/master-dashboard", masterDashboardRoutes);
+app.use("/api/mygp-categories", myGpCategoryRoutes);
+app.use("/api/master/mygp-game-providers", masterMyGpGameProviderRoutes);
+app.use("/api/master/mygp-games", masterMyGpGameRoutes);
+app.use("/api/master/mygp-sports", masterMyGpSportRoutes);
+app.use("/api/public/mygp", myGpWhiteLabelAccessRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

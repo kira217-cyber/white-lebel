@@ -78,8 +78,8 @@ const gameItemsMYGP = [
     icon: Gamepad2,
   },
   {
-    label: "Add Live Game",
-    path: "/my-gp-add-live-game",
+    label: "Add Sports Game",
+    path: "/my-gp-add-sports",
     icon: Trophy,
   },
 ];
@@ -221,7 +221,7 @@ const SidebarContent = ({ onClose }) => {
             </div>
           )}
         </div>
-        {/* <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
           <button
             type="button"
             onClick={() => setGamesOpenMYGP((prev) => !prev)}
@@ -261,7 +261,7 @@ const SidebarContent = ({ onClose }) => {
               })}
             </div>
           )}
-        </div> */}
+        </div>
       </nav>
 
       <div className="border-t border-white/10 p-4">
