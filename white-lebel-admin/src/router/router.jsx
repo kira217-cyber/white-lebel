@@ -18,6 +18,12 @@ import MyGpAddCategory from "../pages/MyGpGameRelatedPages/MyGpAddCategory";
 import MyGpAddGame from "../pages/MyGpGameRelatedPages/MyGpAddGame";
 import MyGpAddSports from "../pages/MyGpGameRelatedPages/MyGpAddSports";
 import MyGpAddProvider from "../pages/MyGpGameRelatedPages/MyGpAddProvider";
+import CxGameCategory from "../pages/CxGameRelatedPages/CxGameCategory";
+import CxGameProvider from "../pages/CxGameRelatedPages/CxGameProvider";
+import CxGame from "../pages/CxGameRelatedPages/CxGame";
+import CxPopularGame from "../pages/CxGameRelatedPages/CxPopularGame";
+import CxSpotsGame from "../pages/CxGameRelatedPages/CxSpotsGame";
+import CxHotGame from "../pages/CxGameRelatedPages/CxHotGame";
 
 export const routes = createBrowserRouter([
   {
@@ -89,6 +95,31 @@ export const routes = createBrowserRouter([
             path: "my-gp-add-sports",
             element: <MyGpAddSports />,
           },
+
+          {
+            path: "cx-add-category",
+            element: <CxGameCategory />,
+          },
+          {
+            path: "cx-add-provider",
+            element: <CxGameProvider />,
+          },
+          {
+            path: "cx-add-game",
+            element: <CxGame />,
+          },
+          {
+            path: "cx-add-popular-game",
+            element: <CxPopularGame />,
+          },
+          {
+            path: "cx-add-sports",
+            element: <CxSpotsGame />,
+          },
+          {
+            path: "cx-add-hot-game",
+            element: <CxHotGame />,
+          }
         ],
       },
     ],

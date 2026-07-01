@@ -1,0 +1,332 @@
+import express from "express";
+import mongoose from "mongoose";
+import fs from "fs";
+import path from "path";
+
+import CxHotGame from "../models/CxHotGame.js";
+import { upload } from "../config/multer.js";
+import { protectMasterAdmin } from "../middleware/authMiddleware.js";
+import { successResponse, errorResponse } from "../utils/response.js";
+
+const router = express.Router();
+
+const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
+
+const cleanText = (value = "") => String(value || "").trim();
+
+const normalizeOrder = (value) => {
+  const num = Number(value);
+  return Number.isFinite(num) && num >= 0 ? num : 0;
+};
+
+const filePath = (file) => {
+  if (!file) return "";
+  return `/uploads/${file.filename}`;
+};
+
+const buildFileUrl = (req, filePathValue = "") => {
+  if (!filePathValue) return "";
+  if (String(filePathValue).startsWith("http")) return filePathValue;
+
+  return `${req.protocol}://${req.get("host")}${
+    String(filePathValue).startsWith("/") ? filePathValue : `/${filePathValue}`
+  }`;
+};
+
+const deleteLocalFile = (targetPath = "") => {
+  try {
+    if (!targetPath) return;
+    if (String(targetPath).startsWith("http")) return;
+
+    const cleanPath = String(targetPath).startsWith("/")
+      ? String(targetPath).slice(1)
+      : String(targetPath);
+
+    const fullPath = path.resolve(cleanPath);
+
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+    }
+  } catch (error) {
+    console.log("CX HOT GAME FILE DELETE ERROR:", error.message);
+  }
+};
+
+const formatHotGame = (req, item) => {
+  const obj = item?.toObject ? item.toObject() : item;
+
+  return {
+    ...obj,
+    imageUrl: obj?.image ? buildFileUrl(req, obj.image) : "",
+  };
+};
+
+/* CREATE */
+router.post(
+  "/",
+  protectMasterAdmin,
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      const gameId = cleanText(req.body?.gameId);
+      const order = normalizeOrder(req.body?.order);
+      const status = req.body?.status === "inactive" ? "inactive" : "active";
+
+      if (!gameId) {
+        if (req.file) deleteLocalFile(filePath(req.file));
+        return errorResponse(res, "Game ID is required.", 400);
+      }
+
+      const exists = await CxHotGame.findOne({ gameId });
+
+      if (exists) {
+        if (req.file) deleteLocalFile(filePath(req.file));
+        return errorResponse(res, "This CX hot game already exists.", 400);
+      }
+
+      const hotGame = await CxHotGame.create({
+        gameId,
+        image: req.file ? filePath(req.file) : "",
+        order,
+        status,
+      });
+
+      return successResponse(
+        res,
+        "CX hot game created successfully.",
+        formatHotGame(req, hotGame),
+        201,
+      );
+    } catch (error) {
+      if (req.file) deleteLocalFile(filePath(req.file));
+
+      if (error?.code === 11000) {
+        return errorResponse(res, "This CX hot game already exists.", 400);
+      }
+
+      return errorResponse(res, error.message || "Server error", 500);
+    }
+  },
+);
+
+/* ADMIN LIST */
+router.get("/", protectMasterAdmin, async (req, res) => {
+  try {
+    const { search = "", status = "", page = 1, limit = 50 } = req.query || {};
+
+    const query = {};
+
+    if (status) query.status = status;
+
+    if (search) {
+      query.gameId = {
+        $regex: String(search).trim(),
+        $options: "i",
+      };
+    }
+
+    const pageNum = Math.max(Number(page) || 1, 1);
+    const limitNum = Math.max(Number(limit) || 50, 1);
+    const skip = (pageNum - 1) * limitNum;
+
+    const [games, total] = await Promise.all([
+      CxHotGame.find(query)
+        .sort({ order: 1, createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      CxHotGame.countDocuments(query),
+    ]);
+
+    return successResponse(res, "CX hot games fetched successfully.", {
+      games: games.map((item) => formatHotGame(req, item)),
+      meta: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum) || 1,
+      },
+    });
+  } catch (error) {
+    return errorResponse(res, error.message || "Server error", 500);
+  }
+});
+
+/* ACTIVE PUBLIC LIST */
+router.get("/active/list", async (req, res) => {
+  try {
+    const games = await CxHotGame.find({ status: "active" }).sort({
+      order: 1,
+      createdAt: -1,
+    });
+
+    return successResponse(
+      res,
+      "CX active hot games fetched successfully.",
+      games.map((item) => formatHotGame(req, item)),
+    );
+  } catch (error) {
+    return errorResponse(res, error.message || "Server error", 500);
+  }
+});
+
+/* SINGLE */
+router.get("/:id", protectMasterAdmin, async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) {
+      return errorResponse(res, "Invalid CX hot game id.", 400);
+    }
+
+    const hotGame = await CxHotGame.findById(req.params.id);
+
+    if (!hotGame) {
+      return errorResponse(res, "CX hot game not found.", 404);
+    }
+
+    return successResponse(
+      res,
+      "CX hot game fetched successfully.",
+      formatHotGame(req, hotGame),
+    );
+  } catch (error) {
+    return errorResponse(res, error.message || "Server error", 500);
+  }
+});
+
+/* UPDATE */
+router.put(
+  "/:id",
+  protectMasterAdmin,
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      if (!isValidObjectId(req.params.id)) {
+        if (req.file) deleteLocalFile(filePath(req.file));
+        return errorResponse(res, "Invalid CX hot game id.", 400);
+      }
+
+      const hotGame = await CxHotGame.findById(req.params.id);
+
+      if (!hotGame) {
+        if (req.file) deleteLocalFile(filePath(req.file));
+        return errorResponse(res, "CX hot game not found.", 404);
+      }
+
+      const gameId = cleanText(req.body?.gameId);
+      const order = normalizeOrder(req.body?.order);
+      const status = req.body?.status === "inactive" ? "inactive" : "active";
+      const removeOldImage = String(req.body?.removeOldImage) === "true";
+
+      const oldImage = hotGame.image;
+
+      if (!gameId) {
+        if (req.file) deleteLocalFile(filePath(req.file));
+        return errorResponse(res, "Game ID is required.", 400);
+      }
+
+      const exists = await CxHotGame.findOne({
+        _id: { $ne: hotGame._id },
+        gameId,
+      });
+
+      if (exists) {
+        if (req.file) deleteLocalFile(filePath(req.file));
+        return errorResponse(res, "This CX hot game already exists.", 400);
+      }
+
+      hotGame.gameId = gameId;
+      hotGame.order = order;
+      hotGame.status = status;
+
+      if (req.file) {
+        hotGame.image = filePath(req.file);
+      } else if (removeOldImage) {
+        hotGame.image = "";
+      }
+
+      await hotGame.save();
+
+      if (req.file && oldImage && !String(oldImage).startsWith("http")) {
+        deleteLocalFile(oldImage);
+      }
+
+      if (removeOldImage && !req.file && oldImage) {
+        deleteLocalFile(oldImage);
+      }
+
+      return successResponse(
+        res,
+        "CX hot game updated successfully.",
+        formatHotGame(req, hotGame),
+      );
+    } catch (error) {
+      if (req.file) deleteLocalFile(filePath(req.file));
+
+      if (error?.code === 11000) {
+        return errorResponse(res, "This CX hot game already exists.", 400);
+      }
+
+      return errorResponse(res, error.message || "Server error", 500);
+    }
+  },
+);
+
+/* REMOVE IMAGE */
+router.patch("/:id/remove-image", protectMasterAdmin, async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) {
+      return errorResponse(res, "Invalid CX hot game id.", 400);
+    }
+
+    const hotGame = await CxHotGame.findById(req.params.id);
+
+    if (!hotGame) {
+      return errorResponse(res, "CX hot game not found.", 404);
+    }
+
+    const oldImage = hotGame.image;
+
+    hotGame.image = "";
+    await hotGame.save();
+
+    if (oldImage && !String(oldImage).startsWith("http")) {
+      deleteLocalFile(oldImage);
+    }
+
+    return successResponse(
+      res,
+      "CX hot game image removed successfully.",
+      formatHotGame(req, hotGame),
+    );
+  } catch (error) {
+    return errorResponse(res, error.message || "Server error", 500);
+  }
+});
+
+/* DELETE */
+router.delete("/:id", protectMasterAdmin, async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) {
+      return errorResponse(res, "Invalid CX hot game id.", 400);
+    }
+
+    const hotGame = await CxHotGame.findByIdAndDelete(req.params.id);
+
+    if (!hotGame) {
+      return errorResponse(res, "CX hot game not found.", 404);
+    }
+
+    if (hotGame.image && !String(hotGame.image).startsWith("http")) {
+      deleteLocalFile(hotGame.image);
+    }
+
+    return successResponse(
+      res,
+      "CX hot game deleted successfully.",
+      formatHotGame(req, hotGame),
+    );
+  } catch (error) {
+    return errorResponse(res, error.message || "Server error", 500);
+  }
+});
+
+export default router;

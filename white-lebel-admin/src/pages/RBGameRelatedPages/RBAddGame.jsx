@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
+  Copy,
   Edit,
   Flame,
   Gamepad2,
@@ -176,6 +177,19 @@ const RBAddGame = () => {
       );
     } finally {
       setLoadingCategories(false);
+    }
+  };
+
+  const handleCopyGameUid = async (gameUId) => {
+    if (!gameUId) {
+      return toast.error("game_uid not found");
+    }
+
+    try {
+      await navigator.clipboard.writeText(gameUId);
+      toast.success("Game UID copied");
+    } catch {
+      toast.error("Failed to copy Game UID");
     }
   };
 
@@ -1003,7 +1017,20 @@ const RBAddGame = () => {
                   </h3>
 
                   <div className="mt-3 space-y-1 text-xs text-slate-500">
-                    <p className="truncate">game_uid: {gameUId || "—"}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="min-w-0 flex-1 truncate">
+                        game_uid: {gameUId || "—"}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopyGameUid(gameUId)}
+                        className="flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-2 py-1 text-[10px] font-black text-cyan-100 transition hover:bg-cyan-300/20"
+                      >
+                        <Copy className="h-3 w-3" />
+                        Copy
+                      </button>
+                    </div>
                     <p className="truncate">
                       Provider: {game.provider || selectedProviderCode || "—"}
                     </p>

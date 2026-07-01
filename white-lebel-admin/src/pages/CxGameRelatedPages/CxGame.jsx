@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  ArrowDownAZ,
+  BadgePlus,
   CheckCircle2,
   Copy,
   Edit,
   Flame,
   Gamepad2,
+  Heart,
   ImagePlus,
   Loader2,
   RefreshCw,
@@ -13,12 +16,6 @@ import {
   Trash2,
   UploadCloud,
   X,
-  Dice5,
-  Fish,
-  Zap,
-  Heart,
-  BadgePlus,
-  ArrowDownAZ,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { api } from "../../api/axios";
@@ -28,12 +25,6 @@ const GAMES_PER_PAGE = 50;
 
 const FLAG_FIELDS = [
   { key: "isHot", title: "HOT", icon: Flame },
-  { key: "isJili", title: "JILI", icon: Gamepad2 },
-  { key: "isPg", title: "PG", icon: Dice5 },
-  { key: "isPoker", title: "Poker", icon: Dice5 },
-  { key: "isCrash", title: "Crash", icon: Zap },
-  { key: "isLiveCasino", title: "Live Casino", icon: Gamepad2 },
-  { key: "isFish", title: "Fish", icon: Fish },
   { key: "isFavorites", title: "Favorites", icon: Heart },
   { key: "isLatest", title: "Latest", icon: BadgePlus },
   { key: "isAZ", title: "A-Z", icon: ArrowDownAZ },
@@ -67,9 +58,8 @@ const fileUrl = (path = "") => {
 
 const cleanText = (value = "") => String(value || "").trim();
 
-const getOracleGameId = (game) => {
-  return cleanText(game?.game_uid || game?.gameUId || "");
-};
+const getOracleGameId = (game) =>
+  cleanText(game?.game_uid || game?.gameUId || "");
 
 const getOracleGameImage = (game, type = "thumbnail") => {
   if (!game) return "";
@@ -123,7 +113,7 @@ const normalizeOracleGames = (payload) => {
     }));
 };
 
-const MyGpAddGame = () => {
+const CxGame = () => {
   const [categories, setCategories] = useState([]);
   const [providers, setProviders] = useState([]);
 
@@ -150,6 +140,11 @@ const MyGpAddGame = () => {
   const [editForm, setEditForm] = useState(initialEditFlags);
   const [editPreview, setEditPreview] = useState("");
 
+  const inputClass =
+    "w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 transition focus:border-cyan-300/60";
+
+  const labelClass = "mb-2 block text-sm font-bold text-slate-200";
+
   const selectedCategory = useMemo(
     () => categories.find((item) => item._id === selectedCategoryId),
     [categories, selectedCategoryId],
@@ -163,26 +158,17 @@ const MyGpAddGame = () => {
   const selectedCategoryName = selectedCategory?.categoryName?.en || "";
   const selectedProviderCode = selectedProvider?.providerCode || "";
 
-  const inputClass =
-    "w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 transition focus:border-cyan-300/60";
-  const labelClass = "mb-2 block text-sm font-bold text-slate-200";
-
   const loadCategories = async () => {
     try {
       setLoadingCategories(true);
 
-      const res = await api.get("/api/mygp-categories/admin/all", {
-        params: { limit: 200, status: "active" },
-      });
+      const res = await api.get("/api/master/cx-game-categories/admin/all");
+      const list = Array.isArray(res.data?.data) ? res.data.data : [];
 
-      const list = res.data?.data?.categories || res.data?.data || [];
-
-      setCategories(
-        list.filter((item) => !item.status || item.status === "active"),
-      );
+      setCategories(list.filter((item) => item.status === "active"));
     } catch (error) {
       toast.error(
-        error?.response?.data?.message || "Failed to load MyGP categories",
+        error?.response?.data?.message || "Failed to load categories",
       );
     } finally {
       setLoadingCategories(false);
@@ -212,8 +198,8 @@ const MyGpAddGame = () => {
     try {
       setLoadingProviders(true);
 
-      const res = await api.get("/api/master/mygp-game-providers", {
-        params: { categoryId, limit: 200, status: "active" },
+      const res = await api.get("/api/master/cx-game-providers", {
+        params: { categoryId, limit: 500, status: "active" },
       });
 
       setProviders(res.data?.data?.providers || []);
@@ -233,7 +219,7 @@ const MyGpAddGame = () => {
     try {
       setLoadingSelectedGames(true);
 
-      const res = await api.get("/api/master/mygp-games", {
+      const res = await api.get("/api/master/cx-games", {
         params: { providerDbId, limit: 10000 },
       });
 
@@ -258,9 +244,8 @@ const MyGpAddGame = () => {
       setLoadingGames(true);
 
       const res = await api.get(
-        `/api/master/mygp-games/oracle/${selectedProviderCode}`,
+        `/api/master/cx-games/oracle/${selectedProviderCode}`,
       );
-
       const games = normalizeOracleGames(res.data?.data || res.data);
 
       setProviderGames(games);
@@ -354,24 +339,18 @@ const MyGpAddGame = () => {
 
   const totalPages =
     Math.ceil(filteredOracleGames.length / GAMES_PER_PAGE) || 1;
-
   const startIndex = (currentPage - 1) * GAMES_PER_PAGE;
+
   const paginatedGames = filteredOracleGames.slice(
     startIndex,
     startIndex + GAMES_PER_PAGE,
   );
 
-  const isGameSelected = (gameUId) => {
-    return selectedGames.some(
-      (item) => String(item.gameUId) === String(gameUId),
-    );
-  };
+  const isGameSelected = (gameUId) =>
+    selectedGames.some((item) => String(item.gameUId) === String(gameUId));
 
-  const getSelectedGame = (gameUId) => {
-    return selectedGames.find(
-      (item) => String(item.gameUId) === String(gameUId),
-    );
-  };
+  const getSelectedGame = (gameUId) =>
+    selectedGames.find((item) => String(item.gameUId) === String(gameUId));
 
   const selectedCountThisPage = useMemo(() => {
     return paginatedGames.reduce((total, game) => {
@@ -414,11 +393,10 @@ const MyGpAddGame = () => {
       if (alreadySelected) {
         const selectedDoc = getSelectedGame(gameUId);
 
-        if (!selectedDoc?._id) {
+        if (!selectedDoc?._id)
           return toast.error("Selected game data not found");
-        }
 
-        await api.delete(`/api/master/mygp-games/${selectedDoc._id}`);
+        await api.delete(`/api/master/cx-games/${selectedDoc._id}`);
 
         setSelectedGames((prev) =>
           prev.filter((item) => item._id !== selectedDoc._id),
@@ -436,7 +414,7 @@ const MyGpAddGame = () => {
         fd.append("image", form.image);
       }
 
-      const res = await api.post("/api/master/mygp-games", fd, {
+      const res = await api.post("/api/master/cx-games", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -473,7 +451,7 @@ const MyGpAddGame = () => {
         appendGameFormData(fd, gameUId);
 
         try {
-          const res = await api.post("/api/master/mygp-games", fd, {
+          const res = await api.post("/api/master/cx-games", fd, {
             headers: { "Content-Type": "multipart/form-data" },
           });
 
@@ -512,7 +490,7 @@ const MyGpAddGame = () => {
         }
 
         try {
-          await api.delete(`/api/master/mygp-games/${selectedDoc._id}`);
+          await api.delete(`/api/master/cx-games/${selectedDoc._id}`);
 
           setSelectedGames((prev) =>
             prev.filter((item) => item._id !== selectedDoc._id),
@@ -588,13 +566,9 @@ const MyGpAddGame = () => {
         fd.append("image", editForm.image);
       }
 
-      const res = await api.put(
-        `/api/master/mygp-games/${editingGame._id}`,
-        fd,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        },
-      );
+      const res = await api.put(`/api/master/cx-games/${editingGame._id}`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
       setSelectedGames((prev) =>
         prev.map((item) =>
@@ -614,7 +588,7 @@ const MyGpAddGame = () => {
 
     try {
       const res = await api.patch(
-        `/api/master/mygp-games/${editingGame._id}/remove-image`,
+        `/api/master/cx-games/${editingGame._id}/remove-image`,
       );
 
       setSelectedGames((prev) =>
@@ -649,6 +623,33 @@ const MyGpAddGame = () => {
     resetAddForm();
   };
 
+  const Pagination = () =>
+    providerGames.length > 0 ? (
+      <div className="flex flex-wrap items-center justify-center gap-3 rounded-3xl border border-white/10 bg-white/[0.06] p-4">
+        <button
+          type="button"
+          onClick={() => goToPage(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="cursor-pointer rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-5 py-2 text-sm font-bold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Previous
+        </button>
+
+        <span className="text-sm font-bold text-slate-300">
+          Page {currentPage} / {totalPages}
+        </span>
+
+        <button
+          type="button"
+          onClick={() => goToPage(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="cursor-pointer rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-5 py-2 text-sm font-bold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Next
+        </button>
+      </div>
+    ) : null;
+
   return (
     <div className="space-y-6 text-white">
       <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.06] p-6 shadow-2xl">
@@ -656,20 +657,19 @@ const MyGpAddGame = () => {
 
         <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
           <div>
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-cyan-300/30 bg-cyan-300/10 text-cyan-200 shadow-[0_0_40px_rgba(34,211,238,0.18)]">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-cyan-300/30 bg-cyan-300/10 text-cyan-200">
               <Gamepad2 className="h-9 w-9" />
             </div>
 
             <h1 className="text-3xl font-black md:text-4xl">
-              MyGP Game{" "}
+              CX Game{" "}
               <span className="bg-gradient-to-r from-cyan-200 to-emerald-200 bg-clip-text text-transparent">
                 Management
               </span>
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm text-slate-300">
-              Select MyGP category and provider, then add Oracle games. Oracle
-              image URL DB-তে save হবে না; শুধু custom uploaded image save হবে।
+              Select category and provider, then add Oracle games in CX project.
             </p>
           </div>
 
@@ -697,12 +697,12 @@ const MyGpAddGame = () => {
 
         <div className="grid gap-5 md:grid-cols-2">
           <div>
-            <label className={labelClass}>Select MyGP Category</label>
+            <label className={labelClass}>Select Category</label>
 
             <select
               value={selectedCategoryId}
               onChange={(e) => handleCategoryChange(e.target.value)}
-              className={inputClass}
+              className={`${inputClass} cursor-pointer`}
             >
               <option className="bg-[#030712]" value="">
                 {loadingCategories
@@ -722,7 +722,7 @@ const MyGpAddGame = () => {
             </select>
 
             {selectedCategoryId && (
-              <p className="mt-2 text-xs text-cyan-300/80">
+              <p className="mt-2 text-xs text-cyan-300">
                 Selected:{" "}
                 <span className="font-black">{selectedCategoryName}</span>
               </p>
@@ -730,13 +730,13 @@ const MyGpAddGame = () => {
           </div>
 
           <div>
-            <label className={labelClass}>Select MyGP Provider</label>
+            <label className={labelClass}>Select Provider</label>
 
             <select
               value={selectedProviderDbId}
               onChange={(e) => handleProviderChange(e.target.value)}
               disabled={!selectedCategoryId || loadingProviders}
-              className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-50`}
+              className={`${inputClass} cursor-pointer disabled:cursor-not-allowed disabled:opacity-50`}
             >
               <option className="bg-[#030712]" value="">
                 {!selectedCategoryId
@@ -758,7 +758,7 @@ const MyGpAddGame = () => {
             </select>
 
             {selectedProvider && (
-              <p className="mt-2 text-xs text-cyan-300/80">
+              <p className="mt-2 text-xs text-cyan-300">
                 Provider Code:{" "}
                 <span className="font-mono font-black">
                   {selectedProvider.providerCode}
@@ -783,9 +783,10 @@ const MyGpAddGame = () => {
               </p>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-[1fr_160px_170px_170px]">
+            <div className="grid gap-3 md:grid-cols-[1fr_150px_170px_170px]">
               <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
                 <Search className="h-5 w-5 text-cyan-300" />
+
                 <input
                   value={searchGame}
                   onChange={(e) => {
@@ -800,7 +801,7 @@ const MyGpAddGame = () => {
               <button
                 type="button"
                 onClick={loadOracleGames}
-                className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm font-black text-cyan-100 hover:bg-cyan-300/15"
+                className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm font-black text-cyan-100 hover:bg-cyan-300/20"
               >
                 <RefreshCw className="h-4 w-4" />
                 Reload
@@ -836,12 +837,12 @@ const MyGpAddGame = () => {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-5">
-            {FLAG_FIELDS.slice(0, 3).map((flag) => (
+          <div className="mt-5 grid gap-3 md:grid-cols-6">
+            {FLAG_FIELDS.map((flag) => (
               <ToggleCard
                 key={flag.key}
                 title={`Bulk ${flag.title}`}
-                subtitle="Apply when adding games"
+                subtitle="Apply when adding"
                 checked={form[flag.key]}
                 icon={flag.icon}
                 onChange={(value) =>
@@ -860,7 +861,7 @@ const MyGpAddGame = () => {
                     oracleImageType: e.target.value,
                   }))
                 }
-                className={inputClass}
+                className={`${inputClass} cursor-pointer`}
               >
                 <option className="bg-[#030712]" value="thumbnail">
                   Thumbnail
@@ -881,7 +882,7 @@ const MyGpAddGame = () => {
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, status: e.target.value }))
                 }
-                className={inputClass}
+                className={`${inputClass} cursor-pointer`}
               >
                 <option className="bg-[#030712]" value="active">
                   Active
@@ -894,6 +895,8 @@ const MyGpAddGame = () => {
           </div>
         </section>
       )}
+
+      <Pagination />
 
       {!selectedProviderDbId ? (
         <section className="rounded-[32px] border border-white/10 bg-white/[0.06] p-10 text-center shadow-2xl">
@@ -926,10 +929,10 @@ const MyGpAddGame = () => {
             return (
               <div
                 key={gameUId}
-                className={`overflow-hidden rounded-[28px] border bg-black/25 shadow-xl transition hover:-translate-y-1 ${
+                className={`overflow-hidden rounded-3xl border bg-black/30 shadow-xl transition hover:-translate-y-1 ${
                   selected
-                    ? "border-emerald-300/50 shadow-emerald-950/30"
-                    : "border-white/10 hover:border-cyan-300/30"
+                    ? "border-emerald-400/50 shadow-emerald-950/30"
+                    : "border-white/10 hover:border-cyan-300/50"
                 }`}
               >
                 <div className="relative h-48 bg-black/40">
@@ -957,17 +960,16 @@ const MyGpAddGame = () => {
                   )}
 
                   <div className="absolute left-3 top-3 flex flex-col gap-2">
-                    {FLAG_FIELDS.slice(0, 4).map((flag) => {
+                    {FLAG_FIELDS.map((flag) => {
                       const active = selected
                         ? selectedDoc?.[flag.key]
                         : form[flag.key];
-
                       if (!active) return null;
 
                       return (
                         <span
                           key={flag.key}
-                          className="rounded-full bg-cyan-300 px-3 py-1 text-xs font-black text-black"
+                          className="rounded-full bg-cyan-500 px-3 py-1 text-xs font-black text-white"
                         >
                           {flag.title}
                         </span>
@@ -990,7 +992,7 @@ const MyGpAddGame = () => {
                       <button
                         type="button"
                         onClick={() => handleCopyGameUid(gameUId)}
-                        className="flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-2 py-1 text-[10px] font-black text-cyan-100 transition hover:bg-cyan-300/20"
+                        className="flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-2 py-1 text-[10px] font-black text-cyan-100 hover:bg-cyan-300/20"
                       >
                         <Copy className="h-3 w-3" />
                         Copy
@@ -1012,7 +1014,7 @@ const MyGpAddGame = () => {
                         Custom Image Optional
                       </label>
 
-                      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-cyan-300/30 bg-black/30 px-4 py-3 text-sm font-black text-cyan-100 hover:border-cyan-300/60">
+                      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-cyan-300/30 bg-black/30 px-4 py-3 text-sm font-black text-cyan-100 hover:border-cyan-300/60 hover:bg-cyan-300/10">
                         <UploadCloud className="h-5 w-5" />
                         Upload Image
                         <input
@@ -1064,7 +1066,7 @@ const MyGpAddGame = () => {
                     <button
                       type="button"
                       onClick={() => openEditModal(selectedDoc, game)}
-                      className="mt-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm font-black text-cyan-100 hover:bg-cyan-300/15"
+                      className="mt-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm font-black text-cyan-100 hover:bg-cyan-300/20"
                     >
                       <Edit className="h-4 w-4" />
                       Edit Image / Flags
@@ -1077,38 +1079,14 @@ const MyGpAddGame = () => {
         </section>
       )}
 
-      {providerGames.length > 0 && (
-        <div className="flex flex-wrap items-center justify-center gap-3 rounded-[24px] border border-white/10 bg-white/[0.06] p-4">
-          <button
-            type="button"
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="cursor-pointer rounded-xl border border-white/10 bg-white/10 px-5 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Previous
-          </button>
-
-          <span className="text-sm font-bold text-slate-300">
-            Page {currentPage} / {totalPages}
-          </span>
-
-          <button
-            type="button"
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="cursor-pointer rounded-xl border border-white/10 bg-white/10 px-5 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Next
-          </button>
-        </div>
-      )}
+      <Pagination />
 
       {isModalOpen && editingGame && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
           <div className="max-h-[72vh] w-full max-w-[850px] overflow-y-auto rounded-[32px] border border-white/10 bg-[#030712] p-6 shadow-2xl">
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-black">Edit MyGP Game</h2>
+                <h2 className="text-xl font-black">Edit CX Game</h2>
                 <p className="text-sm text-slate-400">
                   Update custom image, Oracle image type, flags and status.
                 </p>
@@ -1117,7 +1095,7 @@ const MyGpAddGame = () => {
               <button
                 type="button"
                 onClick={closeModal}
-                className="cursor-pointer rounded-xl bg-white/10 p-2 hover:bg-white/15"
+                className="cursor-pointer rounded-2xl bg-white/10 p-2 hover:bg-white/15"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1127,7 +1105,7 @@ const MyGpAddGame = () => {
               <div>
                 <label className={labelClass}>Game Preview</label>
 
-                <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/30">
+                <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/40">
                   {editPreview ? (
                     <img
                       src={editPreview}
@@ -1144,6 +1122,7 @@ const MyGpAddGame = () => {
 
               <div>
                 <label className={labelClass}>Oracle Image Type</label>
+
                 <select
                   value={editForm.oracleImageType}
                   onChange={(e) =>
@@ -1152,7 +1131,7 @@ const MyGpAddGame = () => {
                       oracleImageType: e.target.value,
                     }))
                   }
-                  className={inputClass}
+                  className={`${inputClass} cursor-pointer`}
                 >
                   <option className="bg-[#030712]" value="thumbnail">
                     Thumbnail
@@ -1169,7 +1148,7 @@ const MyGpAddGame = () => {
               <div>
                 <label className={labelClass}>Upload Custom Image</label>
 
-                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-cyan-300/30 bg-black/30 px-4 py-4 text-sm font-black text-cyan-100 hover:border-cyan-300/60">
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-cyan-300/30 bg-black/30 px-4 py-4 text-sm font-black text-cyan-100 hover:border-cyan-300/60 hover:bg-cyan-300/10">
                   <UploadCloud className="h-5 w-5" />
                   Choose Image
                   <input
@@ -1215,7 +1194,7 @@ const MyGpAddGame = () => {
                       status: e.target.value,
                     }))
                   }
-                  className={inputClass}
+                  className={`${inputClass} cursor-pointer`}
                 >
                   <option className="bg-[#030712]" value="active">
                     Active
@@ -1262,7 +1241,7 @@ const ToggleCard = ({ title, subtitle, checked, onChange, icon: Icon }) => {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/30 p-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-300/10 text-cyan-200">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-300/10 text-cyan-300">
           <Icon className="h-5 w-5" />
         </div>
 
@@ -1276,7 +1255,7 @@ const ToggleCard = ({ title, subtitle, checked, onChange, icon: Icon }) => {
         type="button"
         onClick={() => onChange(!checked)}
         className={`relative h-8 w-16 cursor-pointer rounded-full transition ${
-          checked ? "bg-emerald-500" : "bg-slate-700"
+          checked ? "bg-cyan-500" : "bg-slate-700"
         }`}
       >
         <span
@@ -1289,4 +1268,4 @@ const ToggleCard = ({ title, subtitle, checked, onChange, icon: Icon }) => {
   );
 };
 
-export default MyGpAddGame;
+export default CxGame;

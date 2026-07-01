@@ -489,15 +489,21 @@ router.get("/games", verifyWhiteLabelToken, async (req, res) => {
    GET /api/white-label/mygp/hot-games?page=1&limit=50
 ====================================================== */
 
-router.get("/hot-games", verifyWhiteLabelToken, async (req, res) => {
-  req.query.isHot = "true";
-  return router.handle(
-    Object.assign(req, {
-      url: "/games",
-      originalUrl: "/games",
-    }),
-    res,
-  );
+router.get("/hot-games", verifyWhiteLabelToken, async (req, res, next) => {
+  try {
+    req.query.isHot = "true";
+
+    return router.handle(
+      Object.assign(req, {
+        url: "/games",
+        originalUrl: "/games",
+      }),
+      res,
+      next,
+    );
+  } catch (error) {
+    next(error);
+  }
 });
 
 /* ======================================================

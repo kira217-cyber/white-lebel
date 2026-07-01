@@ -76,6 +76,9 @@ const MyGpAddProvider = () => {
   const [imgPreview, setImgPreview] = useState("");
   const [iconPreview, setIconPreview] = useState("");
 
+  const [oracleSearch, setOracleSearch] = useState("");
+  const [showSearchList, setShowSearchList] = useState(false);
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [homeFilter, setHomeFilter] = useState("");
@@ -96,6 +99,21 @@ const MyGpAddProvider = () => {
       (p) => String(p.providerCode) === String(form.providerCode),
     );
   }, [oracleProviders, form.providerCode]);
+
+  const filteredOracleProviders = useMemo(() => {
+    const keyword = oracleSearch.trim().toLowerCase();
+
+    if (!keyword) return oracleProviders.slice(0, 30);
+
+    return oracleProviders
+      .filter((item) => {
+        return (
+          item.providerName?.toLowerCase().includes(keyword) ||
+          item.providerCode?.toLowerCase().includes(keyword)
+        );
+      })
+      .slice(0, 50);
+  }, [oracleProviders, oracleSearch]);
 
   const loadCategories = async () => {
     try {
@@ -204,16 +222,34 @@ const MyGpAddProvider = () => {
     setIconPreview("");
   }, [form.providerIcon, editing]);
 
+  const applyOracleProvider = (provider) => {
+    setForm((prev) => ({
+      ...prev,
+      providerCode: provider.providerCode,
+      providerName: provider.providerName,
+    }));
+
+    setOracleSearch(`${provider.providerCode} - ${provider.providerName}`);
+    setShowSearchList(false);
+  };
+
   const handleProviderSelect = (providerCode) => {
     const selected = oracleProviders.find(
       (p) => String(p.providerCode) === String(providerCode),
     );
 
+    if (selected) {
+      applyOracleProvider(selected);
+      return;
+    }
+
     setForm((prev) => ({
       ...prev,
-      providerCode: selected?.providerCode || "",
-      providerName: selected?.providerName || "",
+      providerCode: "",
+      providerName: "",
     }));
+    setOracleSearch("");
+    setShowSearchList(false);
   };
 
   const resetForm = () => {
@@ -221,6 +257,8 @@ const MyGpAddProvider = () => {
     setForm(emptyForm);
     setImgPreview("");
     setIconPreview("");
+    setOracleSearch("");
+    setShowSearchList(false);
   };
 
   const startEdit = (provider) => {
@@ -240,6 +278,9 @@ const MyGpAddProvider = () => {
       status: provider.status || "active",
       isHome: Boolean(provider.isHome),
     });
+
+    setOracleSearch("");
+    setShowSearchList(false);
 
     window.scrollTo({
       top: 0,
@@ -451,14 +492,14 @@ const MyGpAddProvider = () => {
               <label className={labelClass}>Select Oracle Provider *</label>
 
               <select
-                className={inputClass}
+                className={`${inputClass} cursor-pointer`}
                 value={form.providerCode}
                 onChange={(e) => handleProviderSelect(e.target.value)}
               >
                 <option className="bg-[#030712]" value="">
                   {oracleLoading
                     ? "Loading providers..."
-                    : "Choose provider..."}
+                    : "Choose provider from full list..."}
                 </option>
 
                 {oracleProviders.map((provider) => (
@@ -471,6 +512,66 @@ const MyGpAddProvider = () => {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="relative md:col-span-2">
+              <label className={labelClass}>Search Oracle Provider</label>
+
+              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+                <Search className="h-5 w-5 text-cyan-300" />
+
+                <input
+                  value={oracleSearch}
+                  onFocus={() => setShowSearchList(true)}
+                  onChange={(e) => {
+                    setOracleSearch(e.target.value);
+                    setShowSearchList(true);
+                  }}
+                  placeholder="Type provider name/code and select..."
+                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
+                />
+              </div>
+
+              {showSearchList && (
+                <div className="absolute left-0 right-0 z-30 mt-2 max-h-80 overflow-y-auto rounded-2xl border border-white/10 bg-[#030712] p-2 shadow-2xl">
+                  {filteredOracleProviders.length === 0 ? (
+                    <div className="px-3 py-4 text-center text-sm text-slate-400">
+                      No provider found.
+                    </div>
+                  ) : (
+                    filteredOracleProviders.map((provider) => (
+                      <button
+                        key={provider.providerCode}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => applyOracleProvider(provider)}
+                        className="mb-1 flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-cyan-300/10"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-cyan-300/20 bg-black/40">
+                          {provider.image ? (
+                            <img
+                              src={provider.image}
+                              alt={provider.providerName}
+                              className="h-full w-full object-contain p-1"
+                            />
+                          ) : (
+                            <Globe2 className="h-5 w-5 text-cyan-300" />
+                          )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black text-cyan-100">
+                            {provider.providerName}
+                          </p>
+                          <p className="text-xs font-bold text-cyan-300">
+                            {provider.providerCode}
+                          </p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
 
               {form.providerCode && (
                 <div className="mt-2 space-y-1 rounded-2xl border border-cyan-300/10 bg-cyan-300/5 px-4 py-3 text-xs text-cyan-300/90">

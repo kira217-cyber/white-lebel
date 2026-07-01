@@ -4,17 +4,30 @@ import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import siteRoutes from "./routes/siteRoutes.js";
+
+// RB Game Related Routes
 import masterRBGameCategoryRoutes from "./routes/masterRBGameCategoryRoutes.js";
 import masterRBGameProviderRoutes from "./routes/masterRBGameProviderRoutes.js";
 import masterRBGameRoutes from "./routes/masterRBGameRoutes.js";
 import whiteLabelGamePublicRoutes from "./routes/whiteLabelGamePublicRoutes.js";
 import masterRBLiveGameRoutes from "./routes/masterRBLiveGameRoutes.js";
 import masterDashboardRoutes from "./routes/masterDashboardRoutes.js";
+
+// MyGp Game Related Routes
 import myGpCategoryRoutes from "./routes/myGpCategoryRoutes.js";
 import masterMyGpGameProviderRoutes from "./routes/masterMyGpGameProviderRoutes.js";
 import masterMyGpGameRoutes from "./routes/masterMyGpGameRoutes.js";
 import masterMyGpSportRoutes from "./routes/masterMyGpSportRoutes.js";
 import myGpWhiteLabelAccessRoutes from "./routes/myGpWhiteLabelAccessRoutes.js";
+
+// Cx Game Related Routes
+import cxGameCategoryRoutes from "./routes/cxGameCategoryRoutes.js";
+import cxGameProviderRoutes from "./routes/cxGameProviderRoutes.js";
+import cxGameRoutes from "./routes/cxGameRoutes.js";
+import cxPopularGameRoutes from "./routes/cxPopularGameRoutes.js";
+import cxSportRoutes from "./routes/cxSportRoutes.js";
+import cxHotGameRoutes from "./routes/cxHotGameRoutes.js";
+import cxGlobalGameRoutes from "./routes/cxGlobalGameRoutes.js";
 
 
 dotenv.config();
@@ -37,17 +50,31 @@ app.get("/", (req, res) => {
 
 app.use("/api/master/auth", authRoutes);
 app.use("/api/master/sites", siteRoutes);
+
+// RB Game Related Routes
 app.use("/api/master/rb-game-categories", masterRBGameCategoryRoutes);
 app.use("/api/master/rb-game-providers", masterRBGameProviderRoutes);
 app.use("/api/master/rb-games", masterRBGameRoutes);
 app.use("/api/white-label", whiteLabelGamePublicRoutes);
 app.use("/api/master-rb-live-game", masterRBLiveGameRoutes);
 app.use("/api/master-dashboard", masterDashboardRoutes);
+
+// MyGp Game Related Routes
 app.use("/api/mygp-categories", myGpCategoryRoutes);
 app.use("/api/master/mygp-game-providers", masterMyGpGameProviderRoutes);
 app.use("/api/master/mygp-games", masterMyGpGameRoutes);
 app.use("/api/master/mygp-sports", masterMyGpSportRoutes);
 app.use("/api/public/mygp", myGpWhiteLabelAccessRoutes);
+
+// Cx Game Related Routes
+app.use("/api/master/cx-game-categories", cxGameCategoryRoutes);
+app.use("/api/master/cx-game-providers", cxGameProviderRoutes);
+app.use("/api/master/cx-games", cxGameRoutes);
+app.use("/api/master/cx-popular-games", cxPopularGameRoutes);
+app.use("/api/master/cx-sports", cxSportRoutes);
+app.use("/api/master/cx-hot-games", cxHotGameRoutes);
+app.use("/api/master/cx-global/client", cxGlobalGameRoutes);
+
 
 app.use((req, res) => {
   res.status(404).json({
