@@ -1,5 +1,13 @@
 import mongoose from "mongoose";
 
+const LangTextSchema = new mongoose.Schema(
+  {
+    bn: { type: String, required: true, trim: true },
+    en: { type: String, required: true, trim: true },
+  },
+  { _id: false },
+);
+
 const CxPopularGameSchema = new mongoose.Schema(
   {
     gameId: {
@@ -8,6 +16,11 @@ const CxPopularGameSchema = new mongoose.Schema(
       trim: true,
       unique: true,
       index: true,
+    },
+
+    gameTitle: {
+      type: LangTextSchema,
+      required: true,
     },
 
     image: {

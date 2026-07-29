@@ -63,12 +63,23 @@ router.post(
   async (req, res) => {
     try {
       const gameId = cleanText(req.body?.gameId);
+      const titleBn = cleanText(req.body?.gameTitle_bn);
+      const titleEn = cleanText(req.body?.gameTitle_en);
       const order = Number(req.body?.order || 0);
       const status = req.body?.status === "inactive" ? "inactive" : "active";
 
       if (!gameId) {
         if (req.file) deleteLocalFile(filePath(req.file));
         return errorResponse(res, "Game ID is required.", 400);
+      }
+
+      if (!titleBn || !titleEn) {
+        if (req.file) deleteLocalFile(filePath(req.file));
+        return errorResponse(
+          res,
+          "Game title in Bangla and English is required.",
+          400,
+        );
       }
 
       const exists = await CxPopularGame.findOne({ gameId });
@@ -80,6 +91,10 @@ router.post(
 
       const popularGame = await CxPopularGame.create({
         gameId,
+        gameTitle: {
+          bn: titleBn,
+          en: titleEn,
+        },
         image: req.file ? filePath(req.file) : "",
         order: Number.isFinite(order) ? order : 0,
         status,
@@ -113,7 +128,12 @@ router.get("/", protectMasterAdmin, async (req, res) => {
     if (status) query.status = status;
 
     if (search) {
-      query.gameId = { $regex: search, $options: "i" };
+      const term = String(search).trim();
+      query.$or = [
+        { gameId: { $regex: term, $options: "i" } },
+        { "gameTitle.bn": { $regex: term, $options: "i" } },
+        { "gameTitle.en": { $regex: term, $options: "i" } },
+      ];
     }
 
     const pageNum = Math.max(Number(page) || 1, 1);
@@ -203,6 +223,8 @@ router.put(
       }
 
       const gameId = cleanText(req.body?.gameId);
+      const titleBn = cleanText(req.body?.gameTitle_bn);
+      const titleEn = cleanText(req.body?.gameTitle_en);
       const order = Number(req.body?.order || 0);
       const status = req.body?.status === "inactive" ? "inactive" : "active";
       const removeOldImage = String(req.body?.removeOldImage) === "true";
@@ -212,6 +234,15 @@ router.put(
       if (!gameId) {
         if (req.file) deleteLocalFile(filePath(req.file));
         return errorResponse(res, "Game ID is required.", 400);
+      }
+
+      if (!titleBn || !titleEn) {
+        if (req.file) deleteLocalFile(filePath(req.file));
+        return errorResponse(
+          res,
+          "Game title in Bangla and English is required.",
+          400,
+        );
       }
 
       const exists = await CxPopularGame.findOne({
@@ -225,6 +256,10 @@ router.put(
       }
 
       popularGame.gameId = gameId;
+      popularGame.gameTitle = {
+        bn: titleBn,
+        en: titleEn,
+      };
       popularGame.order = Number.isFinite(order) ? order : 0;
       popularGame.status = status;
 

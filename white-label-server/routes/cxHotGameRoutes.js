@@ -69,12 +69,23 @@ router.post(
   async (req, res) => {
     try {
       const gameId = cleanText(req.body?.gameId);
+      const titleBn = cleanText(req.body?.gameTitle_bn);
+      const titleEn = cleanText(req.body?.gameTitle_en);
       const order = normalizeOrder(req.body?.order);
       const status = req.body?.status === "inactive" ? "inactive" : "active";
 
       if (!gameId) {
         if (req.file) deleteLocalFile(filePath(req.file));
         return errorResponse(res, "Game ID is required.", 400);
+      }
+
+      if (!titleBn || !titleEn) {
+        if (req.file) deleteLocalFile(filePath(req.file));
+        return errorResponse(
+          res,
+          "Game title in Bangla and English is required.",
+          400,
+        );
       }
 
       const exists = await CxHotGame.findOne({ gameId });
@@ -86,6 +97,10 @@ router.post(
 
       const hotGame = await CxHotGame.create({
         gameId,
+        gameTitle: {
+          bn: titleBn,
+          en: titleEn,
+        },
         image: req.file ? filePath(req.file) : "",
         order,
         status,
@@ -119,10 +134,12 @@ router.get("/", protectMasterAdmin, async (req, res) => {
     if (status) query.status = status;
 
     if (search) {
-      query.gameId = {
-        $regex: String(search).trim(),
-        $options: "i",
-      };
+      const term = String(search).trim();
+      query.$or = [
+        { gameId: { $regex: term, $options: "i" } },
+        { "gameTitle.bn": { $regex: term, $options: "i" } },
+        { "gameTitle.en": { $regex: term, $options: "i" } },
+      ];
     }
 
     const pageNum = Math.max(Number(page) || 1, 1);
@@ -212,6 +229,8 @@ router.put(
       }
 
       const gameId = cleanText(req.body?.gameId);
+      const titleBn = cleanText(req.body?.gameTitle_bn);
+      const titleEn = cleanText(req.body?.gameTitle_en);
       const order = normalizeOrder(req.body?.order);
       const status = req.body?.status === "inactive" ? "inactive" : "active";
       const removeOldImage = String(req.body?.removeOldImage) === "true";
@@ -221,6 +240,15 @@ router.put(
       if (!gameId) {
         if (req.file) deleteLocalFile(filePath(req.file));
         return errorResponse(res, "Game ID is required.", 400);
+      }
+
+      if (!titleBn || !titleEn) {
+        if (req.file) deleteLocalFile(filePath(req.file));
+        return errorResponse(
+          res,
+          "Game title in Bangla and English is required.",
+          400,
+        );
       }
 
       const exists = await CxHotGame.findOne({
@@ -234,6 +262,10 @@ router.put(
       }
 
       hotGame.gameId = gameId;
+      hotGame.gameTitle = {
+        bn: titleBn,
+        en: titleEn,
+      };
       hotGame.order = order;
       hotGame.status = status;
 

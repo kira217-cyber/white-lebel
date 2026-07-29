@@ -18,6 +18,8 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 const emptyForm = {
   gameId: "",
+  gameTitle_bn: "",
+  gameTitle_en: "",
   image: null,
   order: "",
   status: "active",
@@ -104,6 +106,8 @@ const CxPopularGame = () => {
 
     setForm({
       gameId: game?.gameId || "",
+      gameTitle_bn: game?.gameTitle?.bn || "",
+      gameTitle_en: game?.gameTitle?.en || "",
       image: null,
       order: game?.order ? String(game.order) : "",
       status: game?.status || "active",
@@ -119,12 +123,22 @@ const CxPopularGame = () => {
       return toast.error("Game ID is required");
     }
 
+    if (!form.gameTitle_bn.trim()) {
+      return toast.error("Game title in Bangla is required");
+    }
+
+    if (!form.gameTitle_en.trim()) {
+      return toast.error("Game title in English is required");
+    }
+
     try {
       setLoading(true);
 
       const fd = new FormData();
 
       fd.append("gameId", form.gameId.trim());
+      fd.append("gameTitle_bn", form.gameTitle_bn.trim());
+      fd.append("gameTitle_en", form.gameTitle_en.trim());
       fd.append("order", String(form.order || "0"));
       fd.append("status", form.status);
 
@@ -211,7 +225,8 @@ const CxPopularGame = () => {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm text-slate-300">
-              Add CX popular game by Game ID, landscape image, order and status.
+              Add CX popular game by Game ID, Bangla/English title, landscape
+              image, order and status.
             </p>
           </div>
 
@@ -235,7 +250,7 @@ const CxPopularGame = () => {
                 {editing ? "Update CX Popular Game" : "Create CX Popular Game"}
               </h2>
               <p className="text-sm text-slate-400">
-                Only Game ID and landscape image are needed.
+                Add Game ID, Bangla/English title and landscape image.
               </p>
             </div>
 
@@ -259,6 +274,30 @@ const CxPopularGame = () => {
                 value={form.gameId}
                 onChange={(e) => setForm({ ...form, gameId: e.target.value })}
                 placeholder="Enter game id"
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Game Title BN *</label>
+              <input
+                className={inputClass}
+                value={form.gameTitle_bn}
+                onChange={(e) =>
+                  setForm({ ...form, gameTitle_bn: e.target.value })
+                }
+                placeholder="যেমন: বাঘ বনাম ড্রাগন"
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Game Title EN *</label>
+              <input
+                className={inputClass}
+                value={form.gameTitle_en}
+                onChange={(e) =>
+                  setForm({ ...form, gameTitle_en: e.target.value })
+                }
+                placeholder="e.g. Tiger vs Dragon"
               />
             </div>
 
@@ -353,8 +392,16 @@ const CxPopularGame = () => {
 
             <div className="mt-5 text-center">
               <h3 className="text-lg font-black text-cyan-100">
-                Game ID: {form.gameId || "—"}
+                {form.gameTitle_en || "Game Title"}
               </h3>
+
+              <p className="mt-1 text-sm text-slate-400">
+                {form.gameTitle_bn || "বাংলা টাইটেল"}
+              </p>
+
+              <p className="mt-2 text-xs text-slate-500">
+                Game ID: {form.gameId || "—"}
+              </p>
 
               <div className="mt-4 flex justify-center gap-2">
                 <span className="rounded-xl bg-cyan-500 px-3 py-1 text-xs font-black text-white">
@@ -392,7 +439,7 @@ const CxPopularGame = () => {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search game id..."
+                placeholder="Search game id or title..."
                 className="w-full bg-transparent text-sm outline-none placeholder:text-slate-500"
               />
             </div>
@@ -455,8 +502,16 @@ const CxPopularGame = () => {
 
                 <div className="p-5 text-center">
                   <h3 className="truncate text-lg font-black text-cyan-100">
-                    Game ID: {game.gameId || "—"}
+                    {game.gameTitle?.en || "—"}
                   </h3>
+
+                  <p className="mt-1 truncate text-sm text-slate-400">
+                    {game.gameTitle?.bn || "—"}
+                  </p>
+
+                  <p className="mt-2 truncate text-xs text-slate-500">
+                    Game ID: {game.gameId || "—"}
+                  </p>
 
                   <div className="mt-4 flex justify-center gap-2">
                     <span className="rounded-xl bg-cyan-500 px-3 py-1 text-xs font-black text-white">
