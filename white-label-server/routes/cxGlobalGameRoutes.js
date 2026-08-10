@@ -15,6 +15,8 @@ import { successResponse, errorResponse } from "../utils/response.js";
 
 const router = express.Router();
 
+const INITIAL_LIST_LIMIT = 50;
+
 const ORACLE_GAME_API_BASE =
   process.env.ORACLE_GAME_API_BASE || "https://oraclegames.net/api/game";
 
@@ -364,7 +366,44 @@ router.get("/game-data", verifyCxApiKey, async (req, res) => {
       }),
     ]);
 
-    const formattedGames = await attachOracleDataToGames(req, games);
+    // Cap hot/popular/sports/home-provider lists so the first response stays light.
+    const cappedHotGames = hotGames.slice(0, INITIAL_LIST_LIMIT);
+    const cappedPopularGames = popularGames.slice(0, INITIAL_LIST_LIMIT);
+    const cappedSports = sports.slice(0, INITIAL_LIST_LIMIT);
+    const cappedHomeProviders = homeProviders.slice(0, INITIAL_LIST_LIMIT);
+
+    // Group raw (un-enriched) games by category so we only Oracle-enrich
+    // the first INITIAL_LIST_LIMIT games per category on this initial load.
+    // The rest stay available behind /game-list pagination.
+    const rawGamesByCategory = {};
+
+    games.forEach((game) => {
+      const catId = game.categoryId?._id ? String(game.categoryId._id) : "";
+      if (!catId) return;
+
+      if (!rawGamesByCategory[catId]) rawGamesByCategory[catId] = [];
+      rawGamesByCategory[catId].push(game);
+    });
+
+    const gamesById = new Map(games.map((game) => [String(game._id), game]));
+    const neededGames = new Map();
+
+    Object.values(rawGamesByCategory).forEach((list) => {
+      list
+        .slice(0, INITIAL_LIST_LIMIT)
+        .forEach((game) => neededGames.set(String(game._id), game));
+    });
+
+    // Hot/popular games must resolve even if they fall outside the category cap.
+    [...cappedHotGames, ...cappedPopularGames].forEach((item) => {
+      const key = String(item.gameId || "");
+      if (key && !neededGames.has(key) && gamesById.has(key)) {
+        neededGames.set(key, gamesById.get(key));
+      }
+    });
+
+    const reducedGames = Array.from(neededGames.values());
+    const formattedGames = await attachOracleDataToGames(req, reducedGames);
     const gameMap = createGameMap(formattedGames);
 
     const gamesByCategory = {};
@@ -399,27 +438,42 @@ router.get("/game-data", verifyCxApiKey, async (req, res) => {
       }
     });
 
+    const categoryTotals = {};
+    Object.entries(rawGamesByCategory).forEach(([catId, list]) => {
+      categoryTotals[catId] = list.length;
+    });
+
     return successResponse(res, "CX global game data loaded successfully.", {
       categories: categories.map((item) => formatCategory(req, item)),
       providers: formattedProviders,
-      homeProviders: homeProviders.map((item) => formatProvider(req, item)),
+      homeProviders: cappedHomeProviders.map((item) =>
+        formatProvider(req, item),
+      ),
       games: formattedGames,
 
-      hotGames: hotGames.map((item) => {
+      hotGames: cappedHotGames.map((item) => {
         const key = String(item.gameId || "");
         return formatHotGame(req, item, gameMap[key] || null);
       }),
 
-      popularGames: popularGames.map((item) => {
+      popularGames: cappedPopularGames.map((item) => {
         const key = String(item.gameId || "");
         return formatPopularGame(req, item, gameMap[key] || null);
       }),
 
-      sports: sports.map((item) => formatSport(req, item)),
+      sports: cappedSports.map((item) => formatSport(req, item)),
 
       gamesByCategory,
       gamesByProvider,
       providersByCategory,
+
+      // Client can use this to lazy-load the remaining games in the
+      // background via GET /game-list?categoryId=...&page=2&limit=50
+      gamesMeta: {
+        limit: INITIAL_LIST_LIMIT,
+        totalGames: games.length,
+        categoryTotals,
+      },
     });
   } catch (error) {
     return errorResponse(
