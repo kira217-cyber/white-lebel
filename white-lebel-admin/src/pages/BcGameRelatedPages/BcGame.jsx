@@ -139,7 +139,7 @@ const normalizeOracleGames = (payload) => {
     }));
 };
 
-const CxGame = () => {
+const BcGame = () => {
   const [categories, setCategories] = useState([]);
   const [providers, setProviders] = useState([]);
 
@@ -190,7 +190,7 @@ const CxGame = () => {
     try {
       setLoadingCategories(true);
 
-      const res = await api.get("/api/master/cx-game-categories/admin/all");
+      const res = await api.get("/api/master/bc-game-categories/admin/all");
       const list = Array.isArray(res.data?.data) ? res.data.data : [];
 
       setCategories(list.filter((item) => item.status === "active"));
@@ -226,7 +226,7 @@ const CxGame = () => {
     try {
       setLoadingProviders(true);
 
-      const res = await api.get("/api/master/cx-game-providers", {
+      const res = await api.get("/api/master/bc-game-providers", {
         params: { categoryId, limit: 500, status: "active" },
       });
 
@@ -247,7 +247,7 @@ const CxGame = () => {
     try {
       setLoadingSelectedGames(true);
 
-      const res = await api.get("/api/master/cx-games", {
+      const res = await api.get("/api/master/bc-games", {
         params: { providerDbId, limit: 10000 },
       });
 
@@ -274,7 +274,7 @@ const CxGame = () => {
     }
 
     try {
-      const res = await api.get("/api/master/cx-games/order/used", {
+      const res = await api.get("/api/master/bc-games/order/used", {
         params: { categoryId, providerDbId },
       });
 
@@ -304,7 +304,7 @@ const CxGame = () => {
       setLoadingGames(true);
 
       const res = await api.get(
-        `/api/master/cx-games/oracle/${selectedProviderCode}`,
+        `/api/master/bc-games/oracle/${selectedProviderCode}`,
       );
       const games = normalizeOracleGames(res.data?.data || res.data);
 
@@ -461,7 +461,7 @@ const CxGame = () => {
         if (!selectedDoc?._id)
           return toast.error("Selected game data not found");
 
-        await api.delete(`/api/master/cx-games/${selectedDoc._id}`);
+        await api.delete(`/api/master/bc-games/${selectedDoc._id}`);
 
         setSelectedGames((prev) =>
           prev.filter((item) => item._id !== selectedDoc._id),
@@ -480,7 +480,7 @@ const CxGame = () => {
         fd.append("image", form.image);
       }
 
-      const res = await api.post("/api/master/cx-games", fd, {
+      const res = await api.post("/api/master/bc-games", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -517,7 +517,7 @@ const CxGame = () => {
         appendGameFormData(fd, gameUId);
 
         try {
-          const res = await api.post("/api/master/cx-games", fd, {
+          const res = await api.post("/api/master/bc-games", fd, {
             headers: { "Content-Type": "multipart/form-data" },
           });
 
@@ -556,7 +556,7 @@ const CxGame = () => {
         }
 
         try {
-          await api.delete(`/api/master/cx-games/${selectedDoc._id}`);
+          await api.delete(`/api/master/bc-games/${selectedDoc._id}`);
 
           setSelectedGames((prev) =>
             prev.filter((item) => item._id !== selectedDoc._id),
@@ -667,7 +667,7 @@ const CxGame = () => {
         fd.append("image", editForm.image);
       }
 
-      const res = await api.put(`/api/master/cx-games/${editingGame._id}`, fd, {
+      const res = await api.put(`/api/master/bc-games/${editingGame._id}`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -690,7 +690,7 @@ const CxGame = () => {
 
     try {
       const res = await api.patch(
-        `/api/master/cx-games/${editingGame._id}/remove-image`,
+        `/api/master/bc-games/${editingGame._id}/remove-image`,
       );
 
       setSelectedGames((prev) =>
@@ -765,14 +765,14 @@ const CxGame = () => {
             </div>
 
             <h1 className="text-3xl font-black md:text-4xl">
-              CX Game{" "}
+              BetChokkor Game{" "}
               <span className="bg-gradient-to-r from-cyan-200 to-emerald-200 bg-clip-text text-transparent">
                 Management
               </span>
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm text-slate-300">
-              Select category and provider, then add Oracle games in CX project.
+              Select category and provider, then add Oracle games in BetChokkor project.
             </p>
           </div>
 
@@ -1206,7 +1206,7 @@ const CxGame = () => {
           <div className="max-h-[72vh] w-full max-w-[850px] overflow-y-auto rounded-[32px] border border-white/10 bg-[#030712] p-6 shadow-2xl">
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-black">Edit CX Game</h2>
+                <h2 className="text-xl font-black">Edit BetChokkor Game</h2>
                 <p className="text-sm text-slate-400">
                   Update custom image, Oracle image type, page order, flags and
                   status.
@@ -1420,4 +1420,4 @@ const ToggleCard = ({ title, subtitle, checked, onChange, icon: Icon }) => {
   );
 };
 
-export default CxGame;
+export default BcGame;

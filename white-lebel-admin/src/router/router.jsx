@@ -25,6 +25,12 @@ import CxPopularGame from "../pages/CxGameRelatedPages/CxPopularGame";
 import CxSpotsGame from "../pages/CxGameRelatedPages/CxSpotsGame";
 import CxHotGame from "../pages/CxGameRelatedPages/CxHotGame";
 
+import BcGameCategory from "../pages/BcGameRelatedPages/BcGameCategory";
+import BcGameProvider from "../pages/BcGameRelatedPages/BcGameProvider";
+import BcGame from "../pages/BcGameRelatedPages/BcGame";
+import BcSpotsGame from "../pages/BcGameRelatedPages/BcSpotsGame";
+import BcFeaturedGame from "../pages/BcGameRelatedPages/BcFeaturedGame";
+
 export const routes = createBrowserRouter([
   {
     path: "/login",
@@ -119,6 +125,28 @@ export const routes = createBrowserRouter([
           {
             path: "cx-add-hot-game",
             element: <CxHotGame />,
+          },
+
+          // ── BetChokkor ──
+          {
+            path: "bc-add-category",
+            element: <BcGameCategory />,
+          },
+          {
+            path: "bc-add-provider",
+            element: <BcGameProvider />,
+          },
+          {
+            path: "bc-add-game",
+            element: <BcGame />,
+          },
+          {
+            path: "bc-add-sports",
+            element: <BcSpotsGame />,
+          },
+          {
+            path: "bc-add-featured-game",
+            element: <BcFeaturedGame />,
           }
         ],
       },

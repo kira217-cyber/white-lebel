@@ -61,7 +61,7 @@ const fileUrl = (path = "") => {
 const cleanText = (value = "") => String(value || "").trim();
 const cleanProviderCode = (value = "") => cleanText(value).toUpperCase();
 
-const CxGameProvider = () => {
+const BcGameProvider = () => {
   const [categories, setCategories] = useState([]);
   const [oracleProviders, setOracleProviders] = useState([]);
   const [savedProviders, setSavedProviders] = useState([]);
@@ -117,7 +117,7 @@ const CxGameProvider = () => {
 
   const loadCategories = async () => {
     try {
-      const res = await api.get("/api/master/cx-game-categories/admin/all");
+      const res = await api.get("/api/master/bc-game-categories/admin/all");
       const list = Array.isArray(res.data?.data) ? res.data.data : [];
       setCategories(list.filter((item) => item.status === "active"));
     } catch (error) {
@@ -131,7 +131,7 @@ const CxGameProvider = () => {
     try {
       setOracleLoading(true);
 
-      const res = await api.get("/api/master/cx-game-providers/oracle/list");
+      const res = await api.get("/api/master/bc-game-providers/oracle/list");
       setOracleProviders(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch (error) {
       toast.error(
@@ -146,7 +146,7 @@ const CxGameProvider = () => {
     try {
       setListLoading(true);
 
-      const res = await api.get("/api/master/cx-game-providers", {
+      const res = await api.get("/api/master/bc-game-providers", {
         params: {
           categoryId: form.categoryId || "",
           search,
@@ -169,7 +169,7 @@ const CxGameProvider = () => {
   // from the server rather than from the filtered savedProviders list.
   const loadUsedOrders = async (categoryId = form.categoryId) => {
     try {
-      const res = await api.get("/api/master/cx-game-providers/order/used", {
+      const res = await api.get("/api/master/bc-game-providers/order/used", {
         params: { categoryId: categoryId || "" },
       });
 
@@ -307,13 +307,13 @@ const CxGameProvider = () => {
       }
 
       if (editing?._id) {
-        await api.put(`/api/master/cx-game-providers/${editing._id}`, fd, {
+        await api.put(`/api/master/bc-game-providers/${editing._id}`, fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
 
         toast.success("Provider updated successfully");
       } else {
-        await api.post("/api/master/cx-game-providers", fd, {
+        await api.post("/api/master/bc-game-providers", fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
 
@@ -340,7 +340,7 @@ const CxGameProvider = () => {
     try {
       setLoading(true);
 
-      await api.post("/api/master/cx-game-providers/oracle/sync", {
+      await api.post("/api/master/bc-game-providers/oracle/sync", {
         categoryId: form.categoryId,
         providers: [
           {
@@ -369,7 +369,7 @@ const CxGameProvider = () => {
     if (!ok) return;
 
     try {
-      const res = await api.delete(`/api/master/cx-game-providers/${id}`);
+      const res = await api.delete(`/api/master/bc-game-providers/${id}`);
 
       toast.success(
         `Provider deleted. Deleted games: ${res.data?.data?.deletedGames || 0}`,
@@ -397,14 +397,14 @@ const CxGameProvider = () => {
             </div>
 
             <h1 className="text-3xl font-black md:text-4xl">
-              CX Game{" "}
+              BetChokkor Game{" "}
               <span className="bg-gradient-to-r from-cyan-200 to-emerald-200 bg-clip-text text-transparent">
                 Provider
               </span>
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm text-slate-300">
-              Add, sync and manage CX providers from master admin panel.
+              Add, sync and manage BetChokkor providers from master admin panel.
             </p>
           </div>
 
@@ -775,7 +775,7 @@ const CxGameProvider = () => {
       <section className="rounded-[32px] border border-white/10 bg-white/[0.06] p-5 shadow-2xl md:p-6">
         <div className="mb-5 flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
           <div>
-            <h2 className="text-xl font-black">CX Game Providers</h2>
+            <h2 className="text-xl font-black">BetChokkor Game Providers</h2>
             <p className="text-sm text-slate-400">
               Total {savedProviders.length} providers found
             </p>
@@ -975,4 +975,4 @@ const CxGameProvider = () => {
   );
 };
 
-export default CxGameProvider;
+export default BcGameProvider;

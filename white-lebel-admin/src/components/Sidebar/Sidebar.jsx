@@ -120,6 +120,35 @@ const gameItemsCX = [
 ];
 
 
+const gameItemsBC = [
+  {
+    label: "Add Category",
+    path: "/bc-add-category",
+    icon: ListPlus,
+  },
+  {
+    label: "Add Provider",
+    path: "/bc-add-provider",
+    icon: Globe2,
+  },
+  {
+    label: "Add Game",
+    path: "/bc-add-game",
+    icon: Gamepad2,
+  },
+  {
+    label: "Add Sports Game",
+    path: "/bc-add-sports",
+    icon: Trophy,
+  },
+  {
+    label: "Featured Games",
+    path: "/bc-add-featured-game",
+    icon: Sparkles,
+  },
+];
+
+
 const SidebarContent = ({ onClose }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -128,6 +157,7 @@ const SidebarContent = ({ onClose }) => {
   const [gamesOpenRB, setGamesOpenRB] = useState(false);
   const [gamesOpenMYGP, setGamesOpenMYGP] = useState(false);
   const [gamesOpenCX, setGamesOpenCX] = useState(false);
+  const [gamesOpenBC, setGamesOpenBC] = useState(false);
   const handleLogout = () => {
     dispatch(logoutMasterAdmin());
     navigate("/login", { replace: true });
@@ -340,6 +370,49 @@ const SidebarContent = ({ onClose }) => {
             </div>
           )}
           
+        </div>
+
+        {/* BetChokkor — নিজস্ব ক্যাটালগ, CX এর থেকে আলাদা */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+          <button
+            type="button"
+            onClick={() => setGamesOpenBC((prev) => !prev)}
+            className={`flex w-full cursor-pointer items-center justify-between rounded-2xl px-4 py-3 text-sm font-bold transition-all ${
+              gamesOpenBC
+                ? "bg-amber-300/10 text-amber-100"
+                : "text-slate-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <Gamepad2 className="h-5 w-5" />
+              BetChokkor Games
+            </span>
+            <ChevronDown
+              className={`h-5 w-5 transition-transform ${
+                gamesOpenBC ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {gamesOpenBC && (
+            <div className="mt-2 space-y-1 border-l border-amber-300/20 pl-3">
+              {gameItemsBC.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={onClose}
+                    className={subLinkClass}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+          )}
         </div>
       </nav>
 
