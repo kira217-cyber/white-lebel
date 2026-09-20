@@ -1,17 +1,17 @@
 import mongoose from "mongoose";
 
-const CxGameSchema = new mongoose.Schema(
+const BcGameSchema = new mongoose.Schema(
   {
     categoryId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "CxGameCategory",
+      ref: "BcGameCategory",
       required: true,
       index: true,
     },
 
     providerDbId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "CxGameProvider",
+      ref: "BcGameProvider",
       required: true,
       index: true,
     },
@@ -99,14 +99,14 @@ const CxGameSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-CxGameSchema.index({ providerDbId: 1, gameUId: 1 }, { unique: true });
-CxGameSchema.index({ categoryId: 1, status: 1 });
-CxGameSchema.index({ providerDbId: 1, status: 1 });
+BcGameSchema.index({ providerDbId: 1, gameUId: 1 }, { unique: true });
+BcGameSchema.index({ categoryId: 1, status: 1 });
+BcGameSchema.index({ providerDbId: 1, status: 1 });
 
 // Ordered lookups. The unique partial indexes are the hard guarantee behind
 // the "this number is already used" check in the admin panel; unordered games
 // (order 0 / missing) are excluded so any number of them can coexist.
-CxGameSchema.index(
+BcGameSchema.index(
   { categoryId: 1, categoryOrder: 1 },
   {
     unique: true,
@@ -115,7 +115,7 @@ CxGameSchema.index(
   },
 );
 
-CxGameSchema.index(
+BcGameSchema.index(
   { providerDbId: 1, providerOrder: 1 },
   {
     unique: true,
@@ -124,6 +124,6 @@ CxGameSchema.index(
   },
 );
 
-const CxGame = mongoose.models.CxGame || mongoose.model("CxGame", CxGameSchema);
+const BcGame = mongoose.models.BcGame || mongoose.model("BcGame", BcGameSchema);
 
-export default CxGame;
+export default BcGame;

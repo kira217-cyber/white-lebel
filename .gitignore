@@ -1,0 +1,5 @@
+
+# secrets & logs (do not commit)
+white-lebel-admin/.env.production
+.env.production
+*.log

@@ -4,18 +4,17 @@ import axios from "axios";
 
 import WhiteLabelSite from "../models/WhiteLabelSite.js";
 
-import CxGameCategory from "../models/CxGameCategory.js";
-import CxGameProvider from "../models/CxGameProvider.js";
-import CxGame from "../models/CxGame.js";
-import CxHotGame from "../models/CxHotGame.js";
-import CxPopularGame from "../models/CxPopularGame.js";
-import CxSport from "../models/CxSport.js";
+import BcGameCategory from "../models/BcGameCategory.js";
+import BcGameProvider from "../models/BcGameProvider.js";
+import BcGame from "../models/BcGame.js";
+import BcFeaturedGame from "../models/BcFeaturedGame.js";
+import BcSport from "../models/BcSport.js";
 
 import {
   getActiveProviderIds,
   isActiveProviderId,
   rejectHiddenEntries,
-} from "../utils/cxGameVisibility.js";
+} from "../utils/bcGameVisibility.js";
 
 import {
   compareByOrder,
@@ -23,7 +22,7 @@ import {
   findOrdered,
   pickOrderField,
   PROVIDER_ORDER_FIELD,
-} from "../utils/cxGameOrder.js";
+} from "../utils/bcGameOrder.js";
 
 import { successResponse, errorResponse } from "../utils/response.js";
 
@@ -53,7 +52,7 @@ const getToken = (req) => {
   );
 };
 
-const verifyCxApiKey = async (req, res, next) => {
+const verifyBcApiKey = async (req, res, next) => {
   try {
     const token = getToken(req);
 
@@ -122,7 +121,7 @@ const fetchOracleGamesByProvider = async (providerCode = "") => {
         thumbnail: game?.thumbnail || "",
       }));
   } catch (error) {
-    console.log("CX ORACLE GAME FETCH ERROR:", providerCode, error.message);
+    console.log("BetChokkor ORACLE GAME FETCH ERROR:", providerCode, error.message);
     return [];
   }
 };
@@ -219,22 +218,7 @@ const formatGame = (req, game, oracleGame = null) => {
   };
 };
 
-const formatHotGame = (req, item, gameDetails = null) => {
-  const obj = item?.toObject ? item.toObject() : item;
-
-  return {
-    ...obj,
-    id: String(obj._id),
-    gameId: gameDetails?.gameId || obj.gameId || "",
-    gameUId: gameDetails?.gameUId || obj.gameId || "",
-    imageUrl: obj.image
-      ? buildFileUrl(req, obj.image)
-      : gameDetails?.imageUrl || "",
-    game: gameDetails,
-  };
-};
-
-const formatPopularGame = (req, item, gameDetails = null) => {
+const formatFeaturedGame = (req, item, gameDetails = null) => {
   const obj = item?.toObject ? item.toObject() : item;
 
   return {
@@ -325,7 +309,7 @@ router.post("/verify-token", async (req, res) => {
     site.lastTokenVerifiedAt = new Date();
     await site.save();
 
-    return successResponse(res, "CX API token verified successfully.", {
+    return successResponse(res, "BetChokkor API token verified successfully.", {
       valid: true,
       site,
     });
@@ -335,18 +319,17 @@ router.post("/verify-token", async (req, res) => {
 });
 
 /* GET FULL GLOBAL GAME DATA */
-router.get("/game-data", verifyCxApiKey, async (req, res) => {
+router.get("/game-data", verifyBcApiKey, async (req, res) => {
   try {
     const [
       categories,
       providers,
       homeProviders,
       allGames,
-      hotGames,
-      popularGames,
+      featuredGames,
       sports,
     ] = await Promise.all([
-      CxGameCategory.find({ status: "active" }).sort({
+      BcGameCategory.find({ status: "active" }).sort({
         order: 1,
         createdAt: -1,
       }),
@@ -354,7 +337,7 @@ router.get("/game-data", verifyCxApiKey, async (req, res) => {
       // Category button rows follow `order`, the home row follows its own
       // `homeOrder` because it mixes providers from every category.
       findOrdered({
-        model: CxGameProvider,
+        model: BcGameProvider,
         query: { status: "active" },
         orderField: "order",
         populate: [
@@ -366,7 +349,7 @@ router.get("/game-data", verifyCxApiKey, async (req, res) => {
       }),
 
       findOrdered({
-        model: CxGameProvider,
+        model: BcGameProvider,
         query: { status: "active", isHome: true },
         orderField: "homeOrder",
         populate: [
@@ -393,17 +376,12 @@ router.get("/game-data", verifyCxApiKey, async (req, res) => {
         ],
       }),
 
-      CxHotGame.find({ status: "active" }).sort({
+      BcFeaturedGame.find({ status: "active" }).sort({
         order: 1,
         createdAt: -1,
       }),
 
-      CxPopularGame.find({ status: "active" }).sort({
-        order: 1,
-        createdAt: -1,
-      }),
-
-      CxSport.find({ isActive: true }).sort({
+      BcSport.find({ isActive: true }).sort({
         order: 1,
         createdAt: -1,
       }),
@@ -425,14 +403,9 @@ router.get("/game-data", verifyCxApiKey, async (req, res) => {
         .map((game) => String(game._id)),
     );
 
-    // Cap hot/popular/sports/home-provider lists so the first response stays light.
-    const cappedHotGames = rejectHiddenEntries(hotGames, hiddenGameIds).slice(
-      0,
-      INITIAL_LIST_LIMIT,
-    );
-
-    const cappedPopularGames = rejectHiddenEntries(
-      popularGames,
+    // Cap featured/sports/home-provider lists so the first response stays light.
+    const cappedFeaturedGames = rejectHiddenEntries(
+      featuredGames,
       hiddenGameIds,
     ).slice(0, INITIAL_LIST_LIMIT);
 
@@ -461,8 +434,8 @@ router.get("/game-data", verifyCxApiKey, async (req, res) => {
         .forEach((game) => neededGames.set(String(game._id), game));
     });
 
-    // Hot/popular games must resolve even if they fall outside the category cap.
-    [...cappedHotGames, ...cappedPopularGames].forEach((item) => {
+    // ফিচার্ড গেম ক্যাটাগরির ক্যাপের বাইরে পড়লেও যেন ছবি-নাম পাওয়া যায়
+    cappedFeaturedGames.forEach((item) => {
       const key = String(item.gameId || "");
       if (key && !neededGames.has(key) && gamesById.has(key)) {
         neededGames.set(key, gamesById.get(key));
@@ -515,7 +488,7 @@ router.get("/game-data", verifyCxApiKey, async (req, res) => {
       categoryTotals[catId] = list.length;
     });
 
-    return successResponse(res, "CX global game data loaded successfully.", {
+    return successResponse(res, "BetChokkor global game data loaded successfully.", {
       categories: categories.map((item) => formatCategory(req, item)),
       providers: formattedProviders,
       homeProviders: cappedHomeProviders.map((item) =>
@@ -523,14 +496,9 @@ router.get("/game-data", verifyCxApiKey, async (req, res) => {
       ),
       games: formattedGames,
 
-      hotGames: cappedHotGames.map((item) => {
+      featuredGames: cappedFeaturedGames.map((item) => {
         const key = String(item.gameId || "");
-        return formatHotGame(req, item, gameMap[key] || null);
-      }),
-
-      popularGames: cappedPopularGames.map((item) => {
-        const key = String(item.gameId || "");
-        return formatPopularGame(req, item, gameMap[key] || null);
+        return formatFeaturedGame(req, item, gameMap[key] || null);
       }),
 
       sports: cappedSports.map((item) => formatSport(req, item)),
@@ -550,14 +518,14 @@ router.get("/game-data", verifyCxApiKey, async (req, res) => {
   } catch (error) {
     return errorResponse(
       res,
-      error.message || "Failed to load CX global game data.",
+      error.message || "Failed to load BetChokkor global game data.",
       500,
     );
   }
 });
 
 /* GAME LIST */
-router.get("/game-list", verifyCxApiKey, async (req, res) => {
+router.get("/game-list", verifyBcApiKey, async (req, res) => {
   try {
     const {
       categoryId = "",
@@ -594,7 +562,7 @@ router.get("/game-list", verifyCxApiKey, async (req, res) => {
 
     if (providerDbId) {
       if (!isActiveProviderId(activeProviderIds, providerDbId)) {
-        return successResponse(res, "CX games loaded successfully.", {
+        return successResponse(res, "BetChokkor games loaded successfully.", {
           games: [],
           meta: { page: pageNum, limit: limitNum, total: 0, totalPages: 1 },
         });
@@ -624,12 +592,12 @@ router.get("/game-list", verifyCxApiKey, async (req, res) => {
         ],
       }),
 
-      CxGame.countDocuments(query),
+      BcGame.countDocuments(query),
     ]);
 
     const formattedGames = await attachOracleDataToGames(req, games);
 
-    return successResponse(res, "CX games loaded successfully.", {
+    return successResponse(res, "BetChokkor games loaded successfully.", {
       games: formattedGames,
       meta: {
         page: pageNum,
@@ -639,19 +607,19 @@ router.get("/game-list", verifyCxApiKey, async (req, res) => {
       },
     });
   } catch (error) {
-    return errorResponse(res, error.message || "Failed to load CX games.", 500);
+    return errorResponse(res, error.message || "Failed to load BetChokkor games.", 500);
   }
 });
 
 /* PLAY GAME DETAILS */
-router.get("/play-game/:gameId", verifyCxApiKey, async (req, res) => {
+router.get("/play-game/:gameId", verifyBcApiKey, async (req, res) => {
   try {
     const { gameId } = req.params;
 
     let game = null;
 
     if (isValidObjectId(gameId)) {
-      game = await CxGame.findOne({ _id: gameId, status: "active" })
+      game = await BcGame.findOne({ _id: gameId, status: "active" })
         .populate("categoryId", "categoryName categoryTitle iconImage status")
         .populate(
           "providerDbId",
@@ -660,7 +628,7 @@ router.get("/play-game/:gameId", verifyCxApiKey, async (req, res) => {
     }
 
     if (!game) {
-      game = await CxGame.findOne({ gameUId: gameId, status: "active" })
+      game = await BcGame.findOne({ gameUId: gameId, status: "active" })
         .populate("categoryId", "categoryName categoryTitle iconImage status")
         .populate(
           "providerDbId",
@@ -669,26 +637,26 @@ router.get("/play-game/:gameId", verifyCxApiKey, async (req, res) => {
     }
 
     if (!game) {
-      return errorResponse(res, "CX game not found.", 404);
+      return errorResponse(res, "BetChokkor game not found.", 404);
     }
 
     // A deactivated provider's game must not be launchable either, even if
     // someone kept the direct link.
     if (game.providerDbId?.status !== "active") {
-      return errorResponse(res, "CX game not found.", 404);
+      return errorResponse(res, "BetChokkor game not found.", 404);
     }
 
     const [formattedGame] = await attachOracleDataToGames(req, [game]);
 
     return successResponse(
       res,
-      "CX play game details loaded successfully.",
+      "BetChokkor play game details loaded successfully.",
       formattedGame,
     );
   } catch (error) {
     return errorResponse(
       res,
-      error.message || "Failed to load CX play game details.",
+      error.message || "Failed to load BetChokkor play game details.",
       500,
     );
   }

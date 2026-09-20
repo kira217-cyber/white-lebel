@@ -2,19 +2,19 @@ import express from "express";
 import mongoose from "mongoose";
 import axios from "axios";
 
-import CxGame from "../models/CxGame.js";
-import CxGameCategory from "../models/CxGameCategory.js";
-import CxGameProvider from "../models/CxGameProvider.js";
+import BcGame from "../models/BcGame.js";
+import BcGameCategory from "../models/BcGameCategory.js";
+import BcGameProvider from "../models/BcGameProvider.js";
 
 import {
   findGamesOrdered,
   pickOrderField,
-} from "../utils/cxGameOrder.js";
+} from "../utils/bcGameOrder.js";
 
 import {
   getActiveProviderIds,
   isActiveProviderId,
-} from "../utils/cxGameVisibility.js";
+} from "../utils/bcGameVisibility.js";
 
 import { upload } from "../config/multer.js";
 import { protectMasterAdmin } from "../middleware/authMiddleware.js";
@@ -108,7 +108,7 @@ const findOrderConflict = async ({
 
   if (excludeId) query._id = { $ne: excludeId };
 
-  return CxGame.findOne(query).select("gameUId categoryOrder providerOrder");
+  return BcGame.findOne(query).select("gameUId categoryOrder providerOrder");
 };
 
 const orderConflictMessage = (scope, order, conflict) => {
@@ -156,7 +156,7 @@ const normalizeOracleGames = (data) => {
 
 /* ======================================================
    ORACLE GAMES BY PROVIDER CODE
-   GET /api/master/cx-games/oracle/:providerCode
+   GET /api/master/bc-games/oracle/:providerCode
 ====================================================== */
 
 router.get("/oracle/:providerCode", protectMasterAdmin, async (req, res) => {
@@ -179,7 +179,7 @@ router.get("/oracle/:providerCode", protectMasterAdmin, async (req, res) => {
 
     const games = normalizeOracleGames(response.data);
 
-    return successResponse(res, "CX Oracle games fetched successfully.", {
+    return successResponse(res, "BetChokkor Oracle games fetched successfully.", {
       provider: response.data?.provider || null,
       games,
     });
@@ -196,7 +196,7 @@ router.get("/oracle/:providerCode", protectMasterAdmin, async (req, res) => {
 
 /* ======================================================
    CREATE GAME
-   POST /api/master/cx-games
+   POST /api/master/bc-games
 ====================================================== */
 
 router.post(
@@ -220,13 +220,13 @@ router.post(
         return errorResponse(res, "gameUId is required.", 400);
       }
 
-      const category = await CxGameCategory.findById(categoryId);
+      const category = await BcGameCategory.findById(categoryId);
 
       if (!category) {
-        return errorResponse(res, "CX game category not found.", 404);
+        return errorResponse(res, "BetChokkor game category not found.", 404);
       }
 
-      const provider = await CxGameProvider.findOne({
+      const provider = await BcGameProvider.findOne({
         _id: providerDbId,
         categoryId,
       });
@@ -234,14 +234,14 @@ router.post(
       if (!provider) {
         return errorResponse(
           res,
-          "CX game provider not found under this category.",
+          "BetChokkor game provider not found under this category.",
           404,
         );
       }
 
       const finalGameUId = cleanText(gameUId);
 
-      const exists = await CxGame.findOne({
+      const exists = await BcGame.findOne({
         providerDbId,
         gameUId: finalGameUId,
       });
@@ -307,9 +307,9 @@ router.post(
 
       applyBooleanFlags(payload, req.body);
 
-      const game = await CxGame.create(payload);
+      const game = await BcGame.create(payload);
 
-      return successResponse(res, "CX game added successfully.", game, 201);
+      return successResponse(res, "BetChokkor game added successfully.", game, 201);
     } catch (error) {
       if (error?.code === 11000) {
         return errorResponse(res, duplicateKeyMessage(error), 400);
@@ -322,7 +322,7 @@ router.post(
 
 /* ======================================================
    GET ALL GAMES
-   GET /api/master/cx-games
+   GET /api/master/bc-games
 ====================================================== */
 
 router.get("/", protectMasterAdmin, async (req, res) => {
@@ -391,10 +391,10 @@ router.get("/", protectMasterAdmin, async (req, res) => {
         ],
       }),
 
-      CxGame.countDocuments(query),
+      BcGame.countDocuments(query),
     ]);
 
-    return successResponse(res, "CX games fetched successfully.", {
+    return successResponse(res, "BetChokkor games fetched successfully.", {
       games,
       meta: {
         page: pageNum,
@@ -410,7 +410,7 @@ router.get("/", protectMasterAdmin, async (req, res) => {
 
 /* ======================================================
    ACTIVE PUBLIC GAMES
-   GET /api/master/cx-games/active/list
+   GET /api/master/bc-games/active/list
 ====================================================== */
 
 router.get("/active/list", async (req, res) => {
@@ -454,7 +454,7 @@ router.get("/active/list", async (req, res) => {
 
     if (providerDbId) {
       if (!isActiveProviderId(activeProviderIds, providerDbId)) {
-        return successResponse(res, "CX active games fetched successfully.", {
+        return successResponse(res, "BetChokkor active games fetched successfully.", {
           games: [],
           meta: { page: 1, limit: Number(limit) || 50, total: 0, totalPages: 1 },
         });
@@ -481,10 +481,10 @@ router.get("/active/list", async (req, res) => {
         ],
       }),
 
-      CxGame.countDocuments(query),
+      BcGame.countDocuments(query),
     ]);
 
-    return successResponse(res, "CX active games fetched successfully.", {
+    return successResponse(res, "BetChokkor active games fetched successfully.", {
       games,
       meta: {
         page: pageNum,
@@ -500,7 +500,7 @@ router.get("/active/list", async (req, res) => {
 
 /* ======================================================
    ORDER NUMBERS ALREADY IN USE
-   GET /api/master/cx-games/order/used?categoryId=..&providerDbId=..
+   GET /api/master/bc-games/order/used?categoryId=..&providerDbId=..
 
    Feeds the "this number is already added" hint in the edit modal, so the
    admin sees the clash while typing instead of after saving. categoryOrder
@@ -537,19 +537,19 @@ router.get("/order/used", protectMasterAdmin, async (req, res) => {
 
     const [categoryGames, providerGames] = await Promise.all([
       categoryId
-        ? CxGame.find({ categoryId, categoryOrder: { $gt: 0 } })
+        ? BcGame.find({ categoryId, categoryOrder: { $gt: 0 } })
             .select("gameUId categoryOrder")
             .sort({ categoryOrder: 1 })
         : [],
 
       providerDbId
-        ? CxGame.find({ providerDbId, providerOrder: { $gt: 0 } })
+        ? BcGame.find({ providerDbId, providerOrder: { $gt: 0 } })
             .select("gameUId providerOrder")
             .sort({ providerOrder: 1 })
         : [],
     ]);
 
-    return successResponse(res, "CX game order usage fetched successfully.", {
+    return successResponse(res, "BetChokkor game order usage fetched successfully.", {
       categoryOrders: toUsedList(categoryGames, "categoryOrder"),
       providerOrders: toUsedList(providerGames, "providerOrder"),
     });
@@ -568,15 +568,15 @@ router.get("/:id", protectMasterAdmin, async (req, res) => {
       return errorResponse(res, "Invalid game id.", 400);
     }
 
-    const game = await CxGame.findById(req.params.id)
+    const game = await BcGame.findById(req.params.id)
       .populate("categoryId", "categoryName categoryTitle status")
       .populate("providerDbId", "providerName providerCode status");
 
     if (!game) {
-      return errorResponse(res, "CX game not found.", 404);
+      return errorResponse(res, "BetChokkor game not found.", 404);
     }
 
-    return successResponse(res, "CX game fetched successfully.", game);
+    return successResponse(res, "BetChokkor game fetched successfully.", game);
   } catch (error) {
     return errorResponse(res, error.message || "Server error", 500);
   }
@@ -596,10 +596,10 @@ router.put(
         return errorResponse(res, "Invalid game id.", 400);
       }
 
-      const game = await CxGame.findById(req.params.id);
+      const game = await BcGame.findById(req.params.id);
 
       if (!game) {
-        return errorResponse(res, "CX game not found.", 404);
+        return errorResponse(res, "BetChokkor game not found.", 404);
       }
 
       const { categoryId, providerDbId, gameUId, oracleImageType, status } =
@@ -610,10 +610,10 @@ router.put(
           return errorResponse(res, "Invalid categoryId.", 400);
         }
 
-        const category = await CxGameCategory.findById(categoryId);
+        const category = await BcGameCategory.findById(categoryId);
 
         if (!category) {
-          return errorResponse(res, "CX game category not found.", 404);
+          return errorResponse(res, "BetChokkor game category not found.", 404);
         }
 
         game.categoryId = categoryId;
@@ -624,10 +624,10 @@ router.put(
           return errorResponse(res, "Invalid providerDbId.", 400);
         }
 
-        const provider = await CxGameProvider.findById(providerDbId);
+        const provider = await BcGameProvider.findById(providerDbId);
 
         if (!provider) {
-          return errorResponse(res, "CX game provider not found.", 404);
+          return errorResponse(res, "BetChokkor game provider not found.", 404);
         }
 
         game.providerDbId = providerDbId;
@@ -640,7 +640,7 @@ router.put(
           return errorResponse(res, "gameUId is required.", 400);
         }
 
-        const exists = await CxGame.findOne({
+        const exists = await BcGame.findOne({
           _id: { $ne: game._id },
           providerDbId: game.providerDbId,
           gameUId: newGameUId,
@@ -728,7 +728,7 @@ router.put(
 
       await game.save();
 
-      return successResponse(res, "CX game updated successfully.", game);
+      return successResponse(res, "BetChokkor game updated successfully.", game);
     } catch (error) {
       if (error?.code === 11000) {
         return errorResponse(res, duplicateKeyMessage(error), 400);
@@ -749,10 +749,10 @@ router.patch("/:id/remove-image", protectMasterAdmin, async (req, res) => {
       return errorResponse(res, "Invalid game id.", 400);
     }
 
-    const game = await CxGame.findById(req.params.id);
+    const game = await BcGame.findById(req.params.id);
 
     if (!game) {
-      return errorResponse(res, "CX game not found.", 404);
+      return errorResponse(res, "BetChokkor game not found.", 404);
     }
 
     game.image = "";
@@ -760,7 +760,7 @@ router.patch("/:id/remove-image", protectMasterAdmin, async (req, res) => {
 
     await game.save();
 
-    return successResponse(res, "CX game custom image removed.", game);
+    return successResponse(res, "BetChokkor game custom image removed.", game);
   } catch (error) {
     return errorResponse(res, error.message || "Server error", 500);
   }
@@ -776,13 +776,13 @@ router.delete("/:id", protectMasterAdmin, async (req, res) => {
       return errorResponse(res, "Invalid game id.", 400);
     }
 
-    const game = await CxGame.findByIdAndDelete(req.params.id);
+    const game = await BcGame.findByIdAndDelete(req.params.id);
 
     if (!game) {
-      return errorResponse(res, "CX game not found.", 404);
+      return errorResponse(res, "BetChokkor game not found.", 404);
     }
 
-    return successResponse(res, "CX game deleted successfully.", game);
+    return successResponse(res, "BetChokkor game deleted successfully.", game);
   } catch (error) {
     return errorResponse(res, error.message || "Server error", 500);
   }

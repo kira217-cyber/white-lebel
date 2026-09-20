@@ -3,13 +3,13 @@ import mongoose from "mongoose";
 import fs from "fs";
 import path from "path";
 
-import CxHotGame from "../models/CxHotGame.js";
+import BcFeaturedGame from "../models/BcFeaturedGame.js";
 import { upload } from "../config/multer.js";
 import { protectMasterAdmin } from "../middleware/authMiddleware.js";
 import {
   getHiddenGameIds,
   rejectHiddenEntries,
-} from "../utils/cxGameVisibility.js";
+} from "../utils/bcGameVisibility.js";
 
 import { successResponse, errorResponse } from "../utils/response.js";
 
@@ -53,11 +53,11 @@ const deleteLocalFile = (targetPath = "") => {
       fs.unlinkSync(fullPath);
     }
   } catch (error) {
-    console.log("CX HOT GAME FILE DELETE ERROR:", error.message);
+    console.log("BetChokkor HOT GAME FILE DELETE ERROR:", error.message);
   }
 };
 
-const formatHotGame = (req, item) => {
+const formatFeaturedGame = (req, item) => {
   const obj = item?.toObject ? item.toObject() : item;
 
   return {
@@ -93,14 +93,14 @@ router.post(
         );
       }
 
-      const exists = await CxHotGame.findOne({ gameId });
+      const exists = await BcFeaturedGame.findOne({ gameId });
 
       if (exists) {
         if (req.file) deleteLocalFile(filePath(req.file));
-        return errorResponse(res, "This CX hot game already exists.", 400);
+        return errorResponse(res, "This BetChokkor featured game already exists.", 400);
       }
 
-      const hotGame = await CxHotGame.create({
+      const featuredGame = await BcFeaturedGame.create({
         gameId,
         gameTitle: {
           bn: titleBn,
@@ -113,15 +113,15 @@ router.post(
 
       return successResponse(
         res,
-        "CX hot game created successfully.",
-        formatHotGame(req, hotGame),
+        "BetChokkor featured game created successfully.",
+        formatFeaturedGame(req, featuredGame),
         201,
       );
     } catch (error) {
       if (req.file) deleteLocalFile(filePath(req.file));
 
       if (error?.code === 11000) {
-        return errorResponse(res, "This CX hot game already exists.", 400);
+        return errorResponse(res, "This BetChokkor featured game already exists.", 400);
       }
 
       return errorResponse(res, error.message || "Server error", 500);
@@ -152,15 +152,15 @@ router.get("/", protectMasterAdmin, async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     const [games, total] = await Promise.all([
-      CxHotGame.find(query)
+      BcFeaturedGame.find(query)
         .sort({ order: 1, createdAt: -1 })
         .skip(skip)
         .limit(limitNum),
-      CxHotGame.countDocuments(query),
+      BcFeaturedGame.countDocuments(query),
     ]);
 
-    return successResponse(res, "CX hot games fetched successfully.", {
-      games: games.map((item) => formatHotGame(req, item)),
+    return successResponse(res, "BetChokkor featured games fetched successfully.", {
+      games: games.map((item) => formatFeaturedGame(req, item)),
       meta: {
         page: pageNum,
         limit: limitNum,
@@ -177,7 +177,7 @@ router.get("/", protectMasterAdmin, async (req, res) => {
 router.get("/active/list", async (req, res) => {
   try {
     const [games, hiddenGameIds] = await Promise.all([
-      CxHotGame.find({ status: "active" }).sort({
+      BcFeaturedGame.find({ status: "active" }).sort({
         order: 1,
         createdAt: -1,
       }),
@@ -187,9 +187,9 @@ router.get("/active/list", async (req, res) => {
 
     return successResponse(
       res,
-      "CX active hot games fetched successfully.",
+      "BetChokkor active featured games fetched successfully.",
       rejectHiddenEntries(games, hiddenGameIds).map((item) =>
-        formatHotGame(req, item),
+        formatFeaturedGame(req, item),
       ),
     );
   } catch (error) {
@@ -201,19 +201,19 @@ router.get("/active/list", async (req, res) => {
 router.get("/:id", protectMasterAdmin, async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) {
-      return errorResponse(res, "Invalid CX hot game id.", 400);
+      return errorResponse(res, "Invalid BetChokkor featured game id.", 400);
     }
 
-    const hotGame = await CxHotGame.findById(req.params.id);
+    const featuredGame = await BcFeaturedGame.findById(req.params.id);
 
-    if (!hotGame) {
-      return errorResponse(res, "CX hot game not found.", 404);
+    if (!featuredGame) {
+      return errorResponse(res, "BetChokkor featured game not found.", 404);
     }
 
     return successResponse(
       res,
-      "CX hot game fetched successfully.",
-      formatHotGame(req, hotGame),
+      "BetChokkor featured game fetched successfully.",
+      formatFeaturedGame(req, featuredGame),
     );
   } catch (error) {
     return errorResponse(res, error.message || "Server error", 500);
@@ -229,14 +229,14 @@ router.put(
     try {
       if (!isValidObjectId(req.params.id)) {
         if (req.file) deleteLocalFile(filePath(req.file));
-        return errorResponse(res, "Invalid CX hot game id.", 400);
+        return errorResponse(res, "Invalid BetChokkor featured game id.", 400);
       }
 
-      const hotGame = await CxHotGame.findById(req.params.id);
+      const featuredGame = await BcFeaturedGame.findById(req.params.id);
 
-      if (!hotGame) {
+      if (!featuredGame) {
         if (req.file) deleteLocalFile(filePath(req.file));
-        return errorResponse(res, "CX hot game not found.", 404);
+        return errorResponse(res, "BetChokkor featured game not found.", 404);
       }
 
       const gameId = cleanText(req.body?.gameId);
@@ -246,7 +246,7 @@ router.put(
       const status = req.body?.status === "inactive" ? "inactive" : "active";
       const removeOldImage = String(req.body?.removeOldImage) === "true";
 
-      const oldImage = hotGame.image;
+      const oldImage = featuredGame.image;
 
       if (!gameId) {
         if (req.file) deleteLocalFile(filePath(req.file));
@@ -262,31 +262,31 @@ router.put(
         );
       }
 
-      const exists = await CxHotGame.findOne({
-        _id: { $ne: hotGame._id },
+      const exists = await BcFeaturedGame.findOne({
+        _id: { $ne: featuredGame._id },
         gameId,
       });
 
       if (exists) {
         if (req.file) deleteLocalFile(filePath(req.file));
-        return errorResponse(res, "This CX hot game already exists.", 400);
+        return errorResponse(res, "This BetChokkor featured game already exists.", 400);
       }
 
-      hotGame.gameId = gameId;
-      hotGame.gameTitle = {
+      featuredGame.gameId = gameId;
+      featuredGame.gameTitle = {
         bn: titleBn,
         en: titleEn,
       };
-      hotGame.order = order;
-      hotGame.status = status;
+      featuredGame.order = order;
+      featuredGame.status = status;
 
       if (req.file) {
-        hotGame.image = filePath(req.file);
+        featuredGame.image = filePath(req.file);
       } else if (removeOldImage) {
-        hotGame.image = "";
+        featuredGame.image = "";
       }
 
-      await hotGame.save();
+      await featuredGame.save();
 
       if (req.file && oldImage && !String(oldImage).startsWith("http")) {
         deleteLocalFile(oldImage);
@@ -298,14 +298,14 @@ router.put(
 
       return successResponse(
         res,
-        "CX hot game updated successfully.",
-        formatHotGame(req, hotGame),
+        "BetChokkor featured game updated successfully.",
+        formatFeaturedGame(req, featuredGame),
       );
     } catch (error) {
       if (req.file) deleteLocalFile(filePath(req.file));
 
       if (error?.code === 11000) {
-        return errorResponse(res, "This CX hot game already exists.", 400);
+        return errorResponse(res, "This BetChokkor featured game already exists.", 400);
       }
 
       return errorResponse(res, error.message || "Server error", 500);
@@ -317,19 +317,19 @@ router.put(
 router.patch("/:id/remove-image", protectMasterAdmin, async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) {
-      return errorResponse(res, "Invalid CX hot game id.", 400);
+      return errorResponse(res, "Invalid BetChokkor featured game id.", 400);
     }
 
-    const hotGame = await CxHotGame.findById(req.params.id);
+    const featuredGame = await BcFeaturedGame.findById(req.params.id);
 
-    if (!hotGame) {
-      return errorResponse(res, "CX hot game not found.", 404);
+    if (!featuredGame) {
+      return errorResponse(res, "BetChokkor featured game not found.", 404);
     }
 
-    const oldImage = hotGame.image;
+    const oldImage = featuredGame.image;
 
-    hotGame.image = "";
-    await hotGame.save();
+    featuredGame.image = "";
+    await featuredGame.save();
 
     if (oldImage && !String(oldImage).startsWith("http")) {
       deleteLocalFile(oldImage);
@@ -337,8 +337,8 @@ router.patch("/:id/remove-image", protectMasterAdmin, async (req, res) => {
 
     return successResponse(
       res,
-      "CX hot game image removed successfully.",
-      formatHotGame(req, hotGame),
+      "BetChokkor featured game image removed successfully.",
+      formatFeaturedGame(req, featuredGame),
     );
   } catch (error) {
     return errorResponse(res, error.message || "Server error", 500);
@@ -349,23 +349,23 @@ router.patch("/:id/remove-image", protectMasterAdmin, async (req, res) => {
 router.delete("/:id", protectMasterAdmin, async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) {
-      return errorResponse(res, "Invalid CX hot game id.", 400);
+      return errorResponse(res, "Invalid BetChokkor featured game id.", 400);
     }
 
-    const hotGame = await CxHotGame.findByIdAndDelete(req.params.id);
+    const featuredGame = await BcFeaturedGame.findByIdAndDelete(req.params.id);
 
-    if (!hotGame) {
-      return errorResponse(res, "CX hot game not found.", 404);
+    if (!featuredGame) {
+      return errorResponse(res, "BetChokkor featured game not found.", 404);
     }
 
-    if (hotGame.image && !String(hotGame.image).startsWith("http")) {
-      deleteLocalFile(hotGame.image);
+    if (featuredGame.image && !String(featuredGame.image).startsWith("http")) {
+      deleteLocalFile(featuredGame.image);
     }
 
     return successResponse(
       res,
-      "CX hot game deleted successfully.",
-      formatHotGame(req, hotGame),
+      "BetChokkor featured game deleted successfully.",
+      formatFeaturedGame(req, featuredGame),
     );
   } catch (error) {
     return errorResponse(res, error.message || "Server error", 500);

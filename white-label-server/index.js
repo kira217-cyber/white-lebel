@@ -29,6 +29,14 @@ import cxSportRoutes from "./routes/cxSportRoutes.js";
 import cxHotGameRoutes from "./routes/cxHotGameRoutes.js";
 import cxGlobalGameRoutes from "./routes/cxGlobalGameRoutes.js";
 
+// BetChokkor (Bc) — নিজস্ব ক্যাটালগ, Cx এর সাথে কোনো মেশামেশি নেই
+import bcGameCategoryRoutes from "./routes/bcGameCategoryRoutes.js";
+import bcGameProviderRoutes from "./routes/bcGameProviderRoutes.js";
+import bcGameRoutes from "./routes/bcGameRoutes.js";
+import bcSportRoutes from "./routes/bcSportRoutes.js";
+import bcFeaturedGameRoutes from "./routes/bcFeaturedGameRoutes.js";
+import bcGlobalGameRoutes from "./routes/bcGlobalGameRoutes.js";
+
 
 dotenv.config();
 
@@ -74,6 +82,14 @@ app.use("/api/master/cx-popular-games", cxPopularGameRoutes);
 app.use("/api/master/cx-sports", cxSportRoutes);
 app.use("/api/master/cx-hot-games", cxHotGameRoutes);
 app.use("/api/master/cx-global/client", cxGlobalGameRoutes);
+
+// BetChokkor Game Related Routes
+app.use("/api/master/bc-game-categories", bcGameCategoryRoutes);
+app.use("/api/master/bc-game-providers", bcGameProviderRoutes);
+app.use("/api/master/bc-games", bcGameRoutes);
+app.use("/api/master/bc-sports", bcSportRoutes);
+app.use("/api/master/bc-featured-games", bcFeaturedGameRoutes);
+app.use("/api/master/bc-global/client", bcGlobalGameRoutes);
 
 
 app.use((req, res) => {

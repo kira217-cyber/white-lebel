@@ -6,6 +6,11 @@ import path from "path";
 import CxPopularGame from "../models/CxPopularGame.js";
 import { upload } from "../config/multer.js";
 import { protectMasterAdmin } from "../middleware/authMiddleware.js";
+import {
+  getHiddenGameIds,
+  rejectHiddenEntries,
+} from "../utils/cxGameVisibility.js";
+
 import { successResponse, errorResponse } from "../utils/response.js";
 
 const router = express.Router();
@@ -165,15 +170,21 @@ router.get("/", protectMasterAdmin, async (req, res) => {
 /* ACTIVE PUBLIC LIST */
 router.get("/active/list", async (req, res) => {
   try {
-    const games = await CxPopularGame.find({ status: "active" }).sort({
-      order: 1,
-      createdAt: -1,
-    });
+    const [games, hiddenGameIds] = await Promise.all([
+      CxPopularGame.find({ status: "active" }).sort({
+        order: 1,
+        createdAt: -1,
+      }),
+
+      getHiddenGameIds(),
+    ]);
 
     return successResponse(
       res,
       "CX active popular games fetched successfully.",
-      games.map((item) => formatPopularGame(req, item)),
+      rejectHiddenEntries(games, hiddenGameIds).map((item) =>
+        formatPopularGame(req, item),
+      ),
     );
   } catch (error) {
     return errorResponse(res, error.message || "Server error", 500);

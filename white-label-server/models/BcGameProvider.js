@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
 
-const CxGameProviderSchema = new mongoose.Schema(
+const BcGameProviderSchema = new mongoose.Schema(
   {
     categoryId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "CxGameCategory",
+      ref: "BcGameCategory",
       required: true,
       index: true,
     },
@@ -74,7 +74,7 @@ const CxGameProviderSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-CxGameProviderSchema.index(
+BcGameProviderSchema.index(
   { categoryId: 1, providerCode: 1 },
   { unique: true },
 );
@@ -82,7 +82,7 @@ CxGameProviderSchema.index(
 // Hard guarantee behind the "this number is already used" check in the admin
 // panel. Unordered providers (0 / missing) are excluded, so any number of
 // them can coexist.
-CxGameProviderSchema.index(
+BcGameProviderSchema.index(
   { categoryId: 1, order: 1 },
   {
     unique: true,
@@ -91,7 +91,7 @@ CxGameProviderSchema.index(
   },
 );
 
-CxGameProviderSchema.index(
+BcGameProviderSchema.index(
   { homeOrder: 1 },
   {
     unique: true,
@@ -100,8 +100,8 @@ CxGameProviderSchema.index(
   },
 );
 
-const CxGameProvider =
-  mongoose.models.CxGameProvider ||
-  mongoose.model("CxGameProvider", CxGameProviderSchema);
+const BcGameProvider =
+  mongoose.models.BcGameProvider ||
+  mongoose.model("BcGameProvider", BcGameProviderSchema);
 
-export default CxGameProvider;
+export default BcGameProvider;
