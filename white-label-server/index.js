@@ -37,6 +37,12 @@ import bcSportRoutes from "./routes/bcSportRoutes.js";
 import bcFeaturedGameRoutes from "./routes/bcFeaturedGameRoutes.js";
 import bcGlobalGameRoutes from "./routes/bcGlobalGameRoutes.js";
 
+// TBAJEE38 (Tb) — নিজস্ব ক্যাটালগ; প্রোভাইডার ও গেম শুধু Oracle থেকে
+import tbGameCategoryRoutes from "./routes/tbGameCategoryRoutes.js";
+import tbGameProviderRoutes from "./routes/tbGameProviderRoutes.js";
+import tbGameRoutes from "./routes/tbGameRoutes.js";
+import tbGlobalGameRoutes from "./routes/tbGlobalGameRoutes.js";
+
 
 dotenv.config();
 
@@ -90,6 +96,12 @@ app.use("/api/master/bc-games", bcGameRoutes);
 app.use("/api/master/bc-sports", bcSportRoutes);
 app.use("/api/master/bc-featured-games", bcFeaturedGameRoutes);
 app.use("/api/master/bc-global/client", bcGlobalGameRoutes);
+
+// TBAJEE38 Game Related Routes
+app.use("/api/master/tb-game-categories", tbGameCategoryRoutes);
+app.use("/api/master/tb-game-providers", tbGameProviderRoutes);
+app.use("/api/master/tb-games", tbGameRoutes);
+app.use("/api/master/tb-global/client", tbGlobalGameRoutes);
 
 
 app.use((req, res) => {
