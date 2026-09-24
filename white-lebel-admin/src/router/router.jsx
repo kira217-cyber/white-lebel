@@ -31,6 +31,11 @@ import BcGame from "../pages/BcGameRelatedPages/BcGame";
 import BcSpotsGame from "../pages/BcGameRelatedPages/BcSpotsGame";
 import BcFeaturedGame from "../pages/BcGameRelatedPages/BcFeaturedGame";
 
+import TbGameCategory from "../pages/TbGameRelatedPages/TbGameCategory";
+import TbGameProvider from "../pages/TbGameRelatedPages/TbGameProvider";
+import TbGame from "../pages/TbGameRelatedPages/TbGame";
+import TbHotGame from "../pages/TbGameRelatedPages/TbHotGame";
+
 export const routes = createBrowserRouter([
   {
     path: "/login",
@@ -147,7 +152,27 @@ export const routes = createBrowserRouter([
           {
             path: "bc-add-featured-game",
             element: <BcFeaturedGame />,
-          }
+          },
+          {
+            path: "tb-add-category",
+            element: <TbGameCategory />,
+          },
+          {
+            path: "tb-add-provider",
+            element: <TbGameProvider />,
+          },
+          {
+            path: "tb-add-game",
+            element: <TbGame />,
+          },
+          {
+            path: "tb-hot-games",
+            element: <TbHotGame key="hot" list="hot" />,
+          },
+          {
+            path: "tb-favorite-games",
+            element: <TbHotGame key="favorite" list="favorite" />,
+          },
         ],
       },
     ],

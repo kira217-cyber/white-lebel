@@ -3,6 +3,8 @@ import { NavLink, Outlet, useNavigate } from "react-router";
 import { useDispatch, useSelector } from "react-redux";
 import {
   ChevronDown,
+  Flame,
+  Heart,
   Gamepad2,
   Globe2,
   LayoutDashboard,
@@ -149,6 +151,35 @@ const gameItemsBC = [
 ];
 
 
+const gameItemsTB = [
+  {
+    label: "Add Category",
+    path: "/tb-add-category",
+    icon: ListPlus,
+  },
+  {
+    label: "Add Provider",
+    path: "/tb-add-provider",
+    icon: Globe2,
+  },
+  {
+    label: "Add Game",
+    path: "/tb-add-game",
+    icon: Gamepad2,
+  },
+  {
+    label: "Hot Games",
+    path: "/tb-hot-games",
+    icon: Flame,
+  },
+  {
+    label: "Favorite Games",
+    path: "/tb-favorite-games",
+    icon: Heart,
+  },
+];
+
+
 const SidebarContent = ({ onClose }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -158,6 +189,7 @@ const SidebarContent = ({ onClose }) => {
   const [gamesOpenMYGP, setGamesOpenMYGP] = useState(false);
   const [gamesOpenCX, setGamesOpenCX] = useState(false);
   const [gamesOpenBC, setGamesOpenBC] = useState(false);
+  const [gamesOpenTB, setGamesOpenTB] = useState(false);
   const handleLogout = () => {
     dispatch(logoutMasterAdmin());
     navigate("/login", { replace: true });
@@ -397,6 +429,49 @@ const SidebarContent = ({ onClose }) => {
           {gamesOpenBC && (
             <div className="mt-2 space-y-1 border-l border-amber-300/20 pl-3">
               {gameItemsBC.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={onClose}
+                    className={subLinkClass}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* TBAJEE38 — নিজস্ব ক্যাটালগ; প্রোভাইডার ও গেম Oracle থেকে */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+          <button
+            type="button"
+            onClick={() => setGamesOpenTB((prev) => !prev)}
+            className={`flex w-full cursor-pointer items-center justify-between rounded-2xl px-4 py-3 text-sm font-bold transition-all ${
+              gamesOpenTB
+                ? "bg-fuchsia-300/10 text-fuchsia-100"
+                : "text-slate-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <Gamepad2 className="h-5 w-5" />
+              TB Games
+            </span>
+            <ChevronDown
+              className={`h-5 w-5 transition-transform ${
+                gamesOpenTB ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {gamesOpenTB && (
+            <div className="mt-2 space-y-1 border-l border-fuchsia-300/20 pl-3">
+              {gameItemsTB.map((item) => {
                 const Icon = item.icon;
 
                 return (
