@@ -298,7 +298,15 @@ router.get("/game/:gameUId", verifyTbApiKey, async (req, res) => {
 
     if (!game) return errorResponse(res, "Game not found.", 404);
 
-    return successResponse(res, "TB game fetched successfully.", siteGame(req, game, providerNames, providerIcons));
+    // ক্যাটাগরির key — সাইটের বেটিং রেকর্ড গেমের ধরন (স্লট, ফিশিং, লাইভ…)
+    // দিয়ে ছাঁকে, আর callback এর সময় সেটা এখান থেকেই জানে
+    const category = await TbGameCategory.findById(game.categoryId).select("key type").lean();
+
+    return successResponse(res, "TB game fetched successfully.", {
+      ...siteGame(req, game, providerNames, providerIcons),
+      categoryKey: category?.key || "",
+      categoryType: category?.type || "",
+    });
   } catch (error) {
     return errorResponse(res, error.message || "Server error", 500);
   }
