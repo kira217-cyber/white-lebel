@@ -77,7 +77,8 @@ const masterRBGameSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true },
+  // `isNew` ঘরটা পুরোনো ডেটায় আছে — নাম বদলালে ডেটা হারাত; শুধু সতর্কতা বন্ধ
+  { timestamps: true, suppressReservedKeysWarning: true },
 );
 
 masterRBGameSchema.index({ providerDbId: 1, gameUId: 1 }, { unique: true });

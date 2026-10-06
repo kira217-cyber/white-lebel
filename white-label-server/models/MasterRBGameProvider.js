@@ -69,7 +69,8 @@ const masterRBGameProviderSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true },
+  // `isNew` ঘরটা পুরোনো ডেটায় আছে — নাম বদলালে ডেটা হারাত; শুধু সতর্কতা বন্ধ
+  { timestamps: true, suppressReservedKeysWarning: true },
 );
 
 /* ======================================================

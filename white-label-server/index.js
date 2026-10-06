@@ -48,6 +48,14 @@ dotenv.config();
 
 const app = express();
 
+// ধরা না পড়া ভুলে (যেমন database ক্ষণিক না পাওয়া) পুরো server পড়ে না — লগে থাকে
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason?.message || reason);
+});
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error?.message || error);
+});
+
 connectDB();
 
 app.use(cors());
