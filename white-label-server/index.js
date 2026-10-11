@@ -43,6 +43,12 @@ import tbGameProviderRoutes from "./routes/tbGameProviderRoutes.js";
 import tbGameRoutes from "./routes/tbGameRoutes.js";
 import tbGlobalGameRoutes from "./routes/tbGlobalGameRoutes.js";
 
+// 4777Bet (B47) — নিজস্ব ক্যাটালগ; প্রোভাইডার ও গেম শুধু Oracle থেকে
+import b47GameCategoryRoutes from "./routes/b47GameCategoryRoutes.js";
+import b47GameProviderRoutes from "./routes/b47GameProviderRoutes.js";
+import b47GameRoutes from "./routes/b47GameRoutes.js";
+import b47GlobalGameRoutes from "./routes/b47GlobalGameRoutes.js";
+
 
 dotenv.config();
 
@@ -110,6 +116,12 @@ app.use("/api/master/tb-game-categories", tbGameCategoryRoutes);
 app.use("/api/master/tb-game-providers", tbGameProviderRoutes);
 app.use("/api/master/tb-games", tbGameRoutes);
 app.use("/api/master/tb-global/client", tbGlobalGameRoutes);
+
+// 4777Bet Game Related Routes
+app.use("/api/master/b47-game-categories", b47GameCategoryRoutes);
+app.use("/api/master/b47-game-providers", b47GameProviderRoutes);
+app.use("/api/master/b47-games", b47GameRoutes);
+app.use("/api/master/b47-global/client", b47GlobalGameRoutes);
 
 
 app.use((req, res) => {
