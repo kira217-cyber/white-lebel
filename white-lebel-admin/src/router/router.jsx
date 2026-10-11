@@ -36,6 +36,11 @@ import TbGameProvider from "../pages/TbGameRelatedPages/TbGameProvider";
 import TbGame from "../pages/TbGameRelatedPages/TbGame";
 import TbHotGame from "../pages/TbGameRelatedPages/TbHotGame";
 
+import B47GameCategory from "../pages/B47GameRelatedPages/B47GameCategory";
+import B47GameProvider from "../pages/B47GameRelatedPages/B47GameProvider";
+import B47Game from "../pages/B47GameRelatedPages/B47Game";
+import B47HotGame from "../pages/B47GameRelatedPages/B47HotGame";
+
 export const routes = createBrowserRouter([
   {
     path: "/login",
@@ -172,6 +177,26 @@ export const routes = createBrowserRouter([
           {
             path: "tb-favorite-games",
             element: <TbHotGame key="favorite" list="favorite" />,
+          },
+          {
+            path: "b47-add-category",
+            element: <B47GameCategory />,
+          },
+          {
+            path: "b47-add-provider",
+            element: <B47GameProvider />,
+          },
+          {
+            path: "b47-add-game",
+            element: <B47Game />,
+          },
+          {
+            path: "b47-hot-games",
+            element: <B47HotGame key="hot" list="hot" />,
+          },
+          {
+            path: "b47-favorite-games",
+            element: <B47HotGame key="favorite" list="favorite" />,
           },
         ],
       },

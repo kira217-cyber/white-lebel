@@ -180,6 +180,35 @@ const gameItemsTB = [
 ];
 
 
+// 4777Bet — নিজস্ব ক্যাটালগ (4777betvip.com এর ডিজাইনের জন্য)
+const gameItemsB47 = [
+  {
+    label: "Add Category",
+    path: "/b47-add-category",
+    icon: ListPlus,
+  },
+  {
+    label: "Add Provider",
+    path: "/b47-add-provider",
+    icon: Globe2,
+  },
+  {
+    label: "Add Game",
+    path: "/b47-add-game",
+    icon: Gamepad2,
+  },
+  {
+    label: "Hot Games",
+    path: "/b47-hot-games",
+    icon: Flame,
+  },
+  {
+    label: "Favorite Games",
+    path: "/b47-favorite-games",
+    icon: Heart,
+  },
+];
+
 const SidebarContent = ({ onClose }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -190,6 +219,7 @@ const SidebarContent = ({ onClose }) => {
   const [gamesOpenCX, setGamesOpenCX] = useState(false);
   const [gamesOpenBC, setGamesOpenBC] = useState(false);
   const [gamesOpenTB, setGamesOpenTB] = useState(false);
+  const [gamesOpenB47, setGamesOpenB47] = useState(false);
   const handleLogout = () => {
     dispatch(logoutMasterAdmin());
     navigate("/login", { replace: true });
@@ -472,6 +502,49 @@ const SidebarContent = ({ onClose }) => {
           {gamesOpenTB && (
             <div className="mt-2 space-y-1 border-l border-fuchsia-300/20 pl-3">
               {gameItemsTB.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={onClose}
+                    className={subLinkClass}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 4777Bet — নিজস্ব ক্যাটালগ; প্রোভাইডার ও গেম Oracle থেকে */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+          <button
+            type="button"
+            onClick={() => setGamesOpenB47((prev) => !prev)}
+            className={`flex w-full cursor-pointer items-center justify-between rounded-2xl px-4 py-3 text-sm font-bold transition-all ${
+              gamesOpenB47
+                ? "bg-sky-300/10 text-sky-100"
+                : "text-slate-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <Gamepad2 className="h-5 w-5" />
+              4777Bet Games
+            </span>
+            <ChevronDown
+              className={`h-5 w-5 transition-transform ${
+                gamesOpenB47 ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {gamesOpenB47 && (
+            <div className="mt-2 space-y-1 border-l border-sky-300/20 pl-3">
+              {gameItemsB47.map((item) => {
                 const Icon = item.icon;
 
                 return (
