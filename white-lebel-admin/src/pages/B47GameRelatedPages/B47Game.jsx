@@ -550,6 +550,7 @@ const GameTile = ({ game, mine, busy, onAdd, onRemove, onEdit, onHot, onCopy }) 
 
 /* Everything about one added game, with how it looks on the site. */
 const GameEditor = ({ game, provider, total, onClose, onSaved }) => {
+  const [name, setName] = useState(game.name || "");
   const [nameBn, setNameBn] = useState(game.nameBn || "");
   const [position, setPosition] = useState(String(game.position || ""));
   const [isHot, setIsHot] = useState(Boolean(game.isHot));
@@ -572,7 +573,12 @@ const GameEditor = ({ game, provider, total, onClose, onSaved }) => {
   const shown = customPreview || game.oracleImages?.height || game.oracleImages?.thumbnail || "";
 
   const save = async () => {
+    if (!name.trim()) {
+      toast.error("English name cannot be empty");
+      return;
+    }
     const fd = new FormData();
+    if (name.trim() !== game.name) fd.append("name", name.trim());
     fd.append("nameBn", nameBn.trim());
     fd.append("isHot", String(isHot));
     fd.append("isLatest", String(isLatest));
@@ -612,8 +618,9 @@ const GameEditor = ({ game, provider, total, onClose, onSaved }) => {
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-4">
           <div>
-            <label className={labelClass}>English name (Oracle)</label>
-            <input className={`${inputClass} opacity-60`} value={game.name} readOnly />
+            <label className={labelClass}>English name</label>
+            <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="Shown when the site is in English" />
+            <p className="mt-1 text-[11px] text-slate-500">Oracle এর নাম; ভুল থাকলে এখানে ঠিক করো — সাইট English এ এটা দেখায়</p>
           </div>
           <div>
             <label className={labelClass}>বাংলা নাম</label>

@@ -492,9 +492,18 @@ router.put("/:id", protectMasterAdmin, upload.single("image"), async (req, res) 
       return errorResponse(res, "4777Bet game not found.", 404);
     }
 
-    const { nameBn, isHot, isLatest, isFavorite, status, removeImage, order, hotOrder } = req.body || {};
+    const { name, nameBn, isHot, isLatest, isFavorite, status, removeImage, order, hotOrder } = req.body || {};
     const oldImage = game.image;
 
+    // ইংরেজি নাম — Oracle এর নাম কখনো ভুল আসে (যেমন "চ"), তাই admin বদলাতে পারে; খালি নয়
+    if (name !== undefined) {
+      const clean = cleanText(name);
+      if (!clean) {
+        deleteLocalFile(newImage);
+        return errorResponse(res, "English name cannot be empty.", 400);
+      }
+      game.name = clean;
+    }
     if (nameBn !== undefined) game.nameBn = cleanText(nameBn);
     if (isLatest !== undefined) game.isLatest = toBool(isLatest);
     if (status !== undefined) game.status = status === "inactive" ? "inactive" : "active";
