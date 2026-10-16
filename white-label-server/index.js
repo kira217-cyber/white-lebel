@@ -54,6 +54,10 @@ dotenv.config();
 
 const app = express();
 
+// nginx এর পিছনে — X-Forwarded-Proto দেখে req.protocol "https" হয়,
+// নইলে ছবির ঠিকানা http:// দিয়ে বানানো হয় (https সাইটে Mixed Content)
+app.set("trust proxy", 1);
+
 // ধরা না পড়া ভুলে (যেমন database ক্ষণিক না পাওয়া) পুরো server পড়ে না — লগে থাকে
 process.on("unhandledRejection", (reason) => {
   console.error("Unhandled rejection:", reason?.message || reason);
