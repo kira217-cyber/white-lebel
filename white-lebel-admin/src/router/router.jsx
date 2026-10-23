@@ -40,6 +40,10 @@ import B47GameCategory from "../pages/B47GameRelatedPages/B47GameCategory";
 import B47GameProvider from "../pages/B47GameRelatedPages/B47GameProvider";
 import B47Game from "../pages/B47GameRelatedPages/B47Game";
 import B47HotGame from "../pages/B47GameRelatedPages/B47HotGame";
+import Cv6GameCategory from "../pages/Cv6GameRelatedPages/Cv6GameCategory";
+import Cv6GameProvider from "../pages/Cv6GameRelatedPages/Cv6GameProvider";
+import Cv6Game from "../pages/Cv6GameRelatedPages/Cv6Game";
+import Cv6HotGame from "../pages/Cv6GameRelatedPages/Cv6HotGame";
 
 export const routes = createBrowserRouter([
   {
@@ -197,6 +201,26 @@ export const routes = createBrowserRouter([
           {
             path: "b47-favorite-games",
             element: <B47HotGame key="favorite" list="favorite" />,
+          },
+          {
+            path: "cv6-add-category",
+            element: <Cv6GameCategory />,
+          },
+          {
+            path: "cv6-add-provider",
+            element: <Cv6GameProvider />,
+          },
+          {
+            path: "cv6-add-game",
+            element: <Cv6Game />,
+          },
+          {
+            path: "cv6-hot-games",
+            element: <Cv6HotGame key="hot" list="hot" />,
+          },
+          {
+            path: "cv6-favorite-games",
+            element: <Cv6HotGame key="favorite" list="favorite" />,
           },
         ],
       },

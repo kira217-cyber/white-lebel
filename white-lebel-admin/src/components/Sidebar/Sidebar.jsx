@@ -209,6 +209,35 @@ const gameItemsB47 = [
   },
 ];
 
+// CV666 — নিজস্ব ক্যাটালগ (wwwcv666.com এর ডিজাইনের জন্য)
+const gameItemsCv6 = [
+  {
+    label: "Add Category",
+    path: "/cv6-add-category",
+    icon: ListPlus,
+  },
+  {
+    label: "Add Provider",
+    path: "/cv6-add-provider",
+    icon: Globe2,
+  },
+  {
+    label: "Add Game",
+    path: "/cv6-add-game",
+    icon: Gamepad2,
+  },
+  {
+    label: "Hot Games",
+    path: "/cv6-hot-games",
+    icon: Flame,
+  },
+  {
+    label: "Favorite Games",
+    path: "/cv6-favorite-games",
+    icon: Heart,
+  },
+];
+
 const SidebarContent = ({ onClose }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -220,6 +249,7 @@ const SidebarContent = ({ onClose }) => {
   const [gamesOpenBC, setGamesOpenBC] = useState(false);
   const [gamesOpenTB, setGamesOpenTB] = useState(false);
   const [gamesOpenB47, setGamesOpenB47] = useState(false);
+  const [gamesOpenCv6, setGamesOpenCv6] = useState(false);
   const handleLogout = () => {
     dispatch(logoutMasterAdmin());
     navigate("/login", { replace: true });
@@ -545,6 +575,49 @@ const SidebarContent = ({ onClose }) => {
           {gamesOpenB47 && (
             <div className="mt-2 space-y-1 border-l border-sky-300/20 pl-3">
               {gameItemsB47.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={onClose}
+                    className={subLinkClass}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* CV666 — নিজস্ব ক্যাটালগ; প্রোভাইডার ও গেম Oracle থেকে */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+          <button
+            type="button"
+            onClick={() => setGamesOpenCv6((prev) => !prev)}
+            className={`flex w-full cursor-pointer items-center justify-between rounded-2xl px-4 py-3 text-sm font-bold transition-all ${
+              gamesOpenCv6
+                ? "bg-sky-300/10 text-sky-100"
+                : "text-slate-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <Gamepad2 className="h-5 w-5" />
+              CV666 Games
+            </span>
+            <ChevronDown
+              className={`h-5 w-5 transition-transform ${
+                gamesOpenCv6 ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {gamesOpenCv6 && (
+            <div className="mt-2 space-y-1 border-l border-sky-300/20 pl-3">
+              {gameItemsCv6.map((item) => {
                 const Icon = item.icon;
 
                 return (

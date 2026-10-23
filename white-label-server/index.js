@@ -48,6 +48,11 @@ import b47GameCategoryRoutes from "./routes/b47GameCategoryRoutes.js";
 import b47GameProviderRoutes from "./routes/b47GameProviderRoutes.js";
 import b47GameRoutes from "./routes/b47GameRoutes.js";
 import b47GlobalGameRoutes from "./routes/b47GlobalGameRoutes.js";
+// CV666 (Cv6) — নিজস্ব ক্যাটালগ; প্রোভাইডার ও গেম শুধু Oracle থেকে
+import cv6GameCategoryRoutes from "./routes/cv6GameCategoryRoutes.js";
+import cv6GameProviderRoutes from "./routes/cv6GameProviderRoutes.js";
+import cv6GameRoutes from "./routes/cv6GameRoutes.js";
+import cv6GlobalGameRoutes from "./routes/cv6GlobalGameRoutes.js";
 
 
 dotenv.config();
@@ -126,6 +131,10 @@ app.use("/api/master/b47-game-categories", b47GameCategoryRoutes);
 app.use("/api/master/b47-game-providers", b47GameProviderRoutes);
 app.use("/api/master/b47-games", b47GameRoutes);
 app.use("/api/master/b47-global/client", b47GlobalGameRoutes);
+app.use("/api/master/cv6-game-categories", cv6GameCategoryRoutes);
+app.use("/api/master/cv6-game-providers", cv6GameProviderRoutes);
+app.use("/api/master/cv6-games", cv6GameRoutes);
+app.use("/api/master/cv6-global/client", cv6GlobalGameRoutes);
 
 
 app.use((req, res) => {
