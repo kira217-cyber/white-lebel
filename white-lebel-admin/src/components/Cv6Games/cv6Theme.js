@@ -30,12 +30,21 @@ export const btnPrimary =
 export const btnDanger =
   "flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-2.5 text-sm font-black text-red-200 transition hover:bg-red-500/20 disabled:opacity-50";
 
-/* CV666's own colours (measured on wwwcv666.com), for the site look-alikes. */
+/* CV666's own colours, read off the CV666 client (desk.css / mob.css, which
+   were measured on wwwcv666.com), for the site look-alikes. */
 export const SITE = {
-  page: "#F2F2F4",
-  nav: "#6C7F97",
-  navActive: "linear-gradient(#6BBFFF, #45ACF7)",
-  button: "linear-gradient(90deg, #169DFF, #0174C8)",
-  title: "#179EFF",
-  label: "#44ACF8",
+  page: "#003e3e",
+  side: "#044243",
+  tile: "#003840",
+  tile2: "#013941",
+  tileHover: "#00525a",
+  text: "#e0fff7",
+  accent: "#23ffc8",
+  line: "#006165",
+  dark: "#002632",
+  yellow: "linear-gradient(#ffe600, #ffb800)",
+  chip: "linear-gradient(#0f727c, #004e56)",
 };
+
+/* A picked file (blob:) has no extension, so callers pass `svg` for those. */
+export const isSvgUrl = (url = "") => /\.svg(\?|#|$)/i.test(String(url));

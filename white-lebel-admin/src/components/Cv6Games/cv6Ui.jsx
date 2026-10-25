@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { GripVertical, Loader2, UploadCloud, X } from "lucide-react";
-import { labelClass, SITE } from "./cv6Theme";
+import { GripVertical, Heart, Loader2, UploadCloud, X } from "lucide-react";
+import { isSvgUrl, labelClass, SITE } from "./cv6Theme";
 
 /* ------------------------------------------------------------------
    CV666 (CV666) — pieces shared by the CV666 admin pages.
@@ -238,171 +238,242 @@ const DragHandle = () => (
 );
 
 /* ------------------------------------------------------------------
-   Site look-alikes, drawn with CV666's own measurements and colours
-   (wwwcv666.com) so the admin sees what the player will see before saving.
+   Site look-alikes — the CV666 client's own pieces, at the sizes and
+   colours the client draws them (desktop at 1920, mobile on a 414px
+   phone), so the admin sees what the player will see before saving.
 ------------------------------------------------------------------ */
 
-/* Desktop header nav item: 112 × 73, icon 25, label 16/500, grey bar,
-   active = light-blue gradient. */
-export const DeskTabPreview = ({ icon, label, active }) => (
-  <div
-    className="flex h-[73px] w-[112px] shrink-0 flex-col items-center justify-center gap-1 px-3 text-white"
-    style={{ background: active ? SITE.navActive : SITE.nav }}
-  >
-    {icon ? (
-      <img src={icon} alt="" className="h-[25px] w-[25px] object-contain" />
-    ) : (
-      <span className="flex h-[25px] w-[25px] items-center justify-center rounded border border-dashed border-white/40 text-[8px]">
+/*
+ * Category icon the way the site draws it: an SVG is painted in the text
+ * colour (so it turns mint when active), a PNG/JPG is shown as it is.
+ */
+export const SiteIcon = ({ src, svg, size }) => {
+  const box = { width: size, height: size };
+  if (!src) {
+    return (
+      <span
+        className="flex shrink-0 items-center justify-center rounded border border-dashed text-[8px]"
+        style={{ ...box, borderColor: "currentColor", opacity: 0.5 }}
+      >
         icon
       </span>
-    )}
-    <span className="max-w-full truncate text-[16px] font-medium leading-[21px]">{label || "—"}</span>
+    );
+  }
+  if (svg ?? isSvgUrl(src)) {
+    return (
+      <span
+        className="block shrink-0"
+        style={{
+          ...box,
+          background: "currentColor",
+          WebkitMask: `url("${src}") center / contain no-repeat`,
+          mask: `url("${src}") center / contain no-repeat`,
+        }}
+      />
+    );
+  }
+  return <img src={src} alt="" className="shrink-0 object-contain" style={box} />;
+};
+
+/* Desktop home category row (`.dk-cat`): 92 × 60, icon 28, label 12/700;
+   hover/active = mint text and border. */
+export const DeskCatPreview = ({ icon, svg, label, active }) => (
+  <div
+    className="flex shrink-0 flex-col items-center gap-[5px] rounded-[10px] p-[7px] text-[12px] font-bold"
+    style={{
+      width: 92,
+      height: 60,
+      color: active ? SITE.accent : SITE.text,
+      background: SITE.tile2,
+      border: `1px solid ${active ? "rgba(35,255,200,.5)" : "rgba(0,28,44,.4)"}`,
+      boxShadow: `inset 0 2px 0 0 ${SITE.line}, 0 1px 0 0 #001c2c`,
+    }}
+  >
+    <SiteIcon src={icon} svg={svg} size={28} />
+    <span className="max-w-full truncate leading-4">{label || "—"}</span>
   </div>
 );
 
-/* Mobile category tab (414px phone): 77.5 × 66, icon 31, label 11. */
-export const MobTabPreview = ({ icon, label, active }) => (
+/* Desktop left bar tile (`.dk-left-item`): 97 × 85, icon 30, label 12/700
+   uppercase; hover = lighter tile and mint border. */
+export const DeskSideTilePreview = ({ icon, svg, label, active }) => (
   <div
-    className="flex h-[66px] w-[78px] shrink-0 flex-col items-center justify-center text-white"
-    style={{ background: active ? SITE.navActive : SITE.nav }}
+    className="flex shrink-0 flex-col items-center justify-center gap-2 rounded-[10px] p-[9px] text-center text-[12px] font-bold uppercase"
+    style={{
+      width: 97,
+      height: 85,
+      color: SITE.text,
+      background: active ? SITE.tileHover : SITE.tile,
+      border: `1px solid ${active ? "rgba(35,255,200,.5)" : "transparent"}`,
+      boxShadow: `0 1px 0 0 #001f23, inset 0 1px 0 0 ${SITE.line}`,
+    }}
   >
-    {icon ? (
-      <img src={icon} alt="" className="mb-[9px] h-[31px] w-[31px] object-contain" />
-    ) : (
-      <span className="mb-[9px] flex h-[31px] w-[31px] items-center justify-center rounded border border-dashed border-white/40 text-[8px]">
-        icon
-      </span>
-    )}
-    <span className="max-w-full truncate text-[11px] leading-[13px]">{label || "—"}</span>
+    <SiteIcon src={icon} svg={svg} size={30} />
+    <span className="line-clamp-2 max-w-full leading-[13px]">{label || "—"}</span>
   </div>
 );
 
-/* Desktop home "<x> জন্য সবচেয়ে হট সুপারিশ" title: 36px icon + 32px blue. */
-export const SectionTitlePreview = ({ icon, label }) => (
-  <div className="flex items-center gap-3 rounded-xl bg-white px-3 py-2">
-    {icon ? (
-      <img src={icon} alt="" className="h-[30px] w-[30px] object-contain" />
-    ) : (
-      <span className="h-[30px] w-[30px] rounded-lg border border-dashed border-slate-300" />
-    )}
-    <span className="text-[22px] font-bold" style={{ color: SITE.title }}>
-      {label || "—"}
+/* Mobile home game menu (`.mb-menu-item`): 132 × 44, icon 24 left of the
+   label, 13/700 uppercase; active = mint. */
+export const MobMenuPreview = ({ icon, svg, label, active }) => (
+  <div
+    className="flex shrink-0 items-center justify-center rounded-[8px] px-[7px] text-[13px] font-bold uppercase"
+    style={{
+      width: 132,
+      height: 44,
+      color: active ? SITE.accent : SITE.text,
+      background: SITE.tile2,
+      boxShadow: `0 1px 0 0 #001c2c, inset 0 1px 0 0 ${SITE.line}`,
+    }}
+  >
+    <span className="mr-[5px]">
+      <SiteIcon src={icon} svg={svg} size={24} />
     </span>
+    <span className="truncate">{label || "—"}</span>
   </div>
 );
 
-/* Desktop home "সরবরাহকারীর তালিকা" card. Large 646 × 365 (2 per row),
-   small 416 × 232 (3 in the white strip); drawn here at half size. */
-export const HomeCardPreview = ({ banner, label, logos = [], size = "large" }) => {
-  const large = size === "large";
+/* Mobile side drawer tile (`.mb-drawer-item`): 105 × 77, icon 24 over the
+   label, 13/700. */
+export const MobDrawerPreview = ({ icon, svg, label }) => (
+  <div
+    className="flex shrink-0 flex-col items-center justify-center rounded-[10px] px-[10px] py-[8px] text-center text-[13px] font-bold"
+    style={{
+      width: 105,
+      height: 77,
+      color: SITE.text,
+      background: SITE.tile,
+      boxShadow: `0 1px 0 0 #001f23, inset 0 1px 0 0 ${SITE.line}`,
+    }}
+  >
+    <span className="mb-[9px]">
+      <SiteIcon src={icon} svg={svg} size={24} />
+    </span>
+    <span className="line-clamp-2 leading-[15px]">{label || "—"}</span>
+  </div>
+);
+
+/*
+ * Game center provider chip (`.cvgc-chip`), showing the white "mobile logo".
+ * Desktop 52 × 28 (logo 40 × 20), mobile 73 × 35 (logo 61 × 24); the picked
+ * chip and "সব" are yellow, the others teal.
+ */
+export const ChipPreview = ({ logo, name, active, all, mobile }) => {
+  const yellow = active || all;
   return (
     <div
-      className="relative shrink-0 overflow-hidden rounded-xl bg-white"
-      style={{ width: large ? 323 : 208, height: large ? 184 : 116 }}
+      className="flex shrink-0 items-center justify-center px-[5px] font-semibold"
+      style={{
+        width: mobile ? 73 : 52,
+        height: mobile ? 35 : 28,
+        fontSize: mobile ? 14 : 12,
+        borderRadius: mobile ? 6.6 : 8,
+        color: yellow ? "#000" : "#fff",
+        background: yellow ? SITE.yellow : SITE.chip,
+        border: `1px solid ${yellow ? "rgba(255,242,166,.5)" : "rgba(35,255,200,.1)"}`,
+        boxShadow: yellow ? "0 1px 0 0 #b64100, inset 0 1px 0 1px #fff2a6" : "0 1px 0 0 #005540",
+      }}
     >
-      {banner ? (
-        <img src={banner} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      {all ? (
+        "সব"
+      ) : logo ? (
+        <img
+          src={logo}
+          alt={name}
+          className="object-contain"
+          style={{ width: mobile ? 61 : 40, height: mobile ? 24 : 20 }}
+        />
       ) : (
-        <span className="absolute inset-0 flex items-center justify-center text-xs text-slate-400">banner</span>
+        <em className="truncate not-italic">{name}</em>
       )}
-      {large && (
-        <div className="absolute bottom-[4px] left-[4px] flex">
-          {logos.slice(0, 4).map((src, index) => (
-            <img key={index} src={src} alt="" className="h-[30px] w-[60px] object-contain" />
-          ))}
-        </div>
-      )}
-      <span
-        className="absolute flex items-center justify-center rounded-full font-bold text-white"
-        style={{
-          right: large ? 4 : 22,
-          bottom: large ? 4 : 18,
-          width: 70,
-          height: 30,
-          fontSize: 12,
-          background: SITE.button,
-        }}
-      >
-        {label || "—"}
-      </span>
     </div>
   );
 };
 
-/* Provider logo as it sits on the home card: 120 × 60 (half size here). */
-export const DeskChipPreview = ({ icon, name }) => (
-  <div className="flex h-[30px] w-[60px] shrink-0 items-center justify-center overflow-hidden rounded bg-white">
-    {icon ? (
-      <img src={icon} alt={name} className="h-full w-full object-contain" />
+/*
+ * Provider card on the live/sports pages and home rows (`.dk-vendor`,
+ * `.cvgc-vendor`): the lobby picture. Desktop 160 × 219, mobile 125 × 168.
+ * Without a lobby picture the site shows the colour logo and the name.
+ */
+export const LobbyCardPreview = ({ image, logo, name, mobile }) => (
+  <div
+    className="relative shrink-0 overflow-hidden"
+    style={{
+      width: mobile ? 125 : 160,
+      height: mobile ? 168 : 219,
+      borderRadius: mobile ? 9 : 10,
+    }}
+  >
+    {image ? (
+      <img src={image} alt={name} className="h-full w-full object-cover" />
     ) : (
-      <span className="text-[10px] font-bold text-slate-600">{name}</span>
+      <div
+        className="flex h-full w-full flex-col items-center justify-center gap-[10px] font-bold"
+        style={{ color: SITE.text, background: SITE.tile }}
+      >
+        {logo && <img src={logo} alt="" className="h-[55px] w-[110px] object-contain" />}
+        <span>{name || "—"}</span>
+      </div>
     )}
   </div>
 );
 
-/* Mobile provider rail item (game center). */
-export const MobRailPreview = ({ icon, name, active }) => (
-  <div
-    className="flex h-[38px] w-[80px] shrink-0 items-center justify-center overflow-hidden rounded-lg px-1"
-    style={{
-      background: active ? SITE.navActive : "#fff",
-      border: `1px solid ${active ? "transparent" : "#E3E8EF"}`,
-    }}
-  >
-    {icon ? (
-      <img src={icon} alt={name} className="h-[28px] w-[72px] object-contain" />
-    ) : (
-      <span className="text-[11px] font-bold text-slate-600">{name}</span>
-    )}
-  </div>
-);
-
-/* Game card. Desktop 236 × 147 (label + provider logo left, art right,
-   name under), mobile one third of the row (label, logo, art, name). */
-export const GameCardPreview = ({ image, name, badge, logo, typeLabel, hot, mobile = false }) => (
-  <div
-    className="relative shrink-0 overflow-hidden rounded-lg"
-    style={{
-      width: mobile ? 128 : 236,
-      height: mobile ? 92 : 147,
-      background: "linear-gradient(180deg,#E8F1FB,#F7FAFE)",
-      boxShadow: "0 2px 4px rgba(108,127,151,.25)",
-    }}
-  >
+/* Desktop footer provider strip: 70 × 35 colour logos. */
+export const FooterLogoPreview = ({ logo, name }) =>
+  logo ? (
+    <img src={logo} alt={name} title={name} className="h-[35px] w-[70px] shrink-0 object-contain" />
+  ) : (
     <span
-      className="absolute left-[6px] top-[4px] text-[12px] font-semibold"
-      style={{ color: SITE.label }}
+      className="flex h-[35px] w-[70px] shrink-0 items-center justify-center text-[10px]"
+      style={{ color: SITE.text }}
     >
-      {typeLabel || "স্লট"}
+      {name || "—"}
     </span>
-    {logo ? (
-      <img
-        src={logo}
-        alt={badge}
-        className="absolute left-[4px] object-contain"
-        style={mobile ? { top: 22, width: 58, height: 30 } : { top: 30, width: 104, height: 52 }}
-      />
+  );
+
+/*
+ * Game card. Desktop (`.dk-game`) 160 × 216, radius 8, art only, a 28px
+ * heart top right. Mobile (`.mb-game`) 121 × 164, radius 11, heart top
+ * right and the provider's white logo (44 × 22) on a dark fade at the bottom.
+ */
+export const GameCardPreview = ({ image, name, vendorLogo, mobile = false }) => (
+  <div
+    className="relative shrink-0 overflow-hidden"
+    title={name}
+    style={{
+      width: mobile ? 121 : 160,
+      height: mobile ? 164 : 216,
+      borderRadius: mobile ? 11 : 8,
+      background: mobile ? SITE.dark : "rgba(0,0,0,.2)",
+    }}
+  >
+    {image ? (
+      <img src={image} alt={name} className="h-full w-full object-cover" />
     ) : (
-      badge && (
-        <span className="absolute left-[6px] top-[26px] max-w-[45%] truncate text-[13px] font-black text-slate-700">
-          {badge}
-        </span>
-      )
+      <span
+        className="absolute inset-0 flex items-center justify-center px-2 text-center text-[11px]"
+        style={{ color: SITE.text }}
+      >
+        {name || "—"}
+      </span>
     )}
-    <div
-      className="absolute overflow-hidden rounded-md bg-slate-200"
-      style={mobile ? { right: 6, top: 6, width: 52, height: 52 } : { right: 12, top: 10, width: 96, height: 96 }}
+    <span
+      className="absolute flex items-center justify-center rounded-full text-white"
+      style={
+        mobile
+          ? { top: 9, right: 9, width: 24, height: 24 }
+          : { top: 10, right: 10, width: 28, height: 28, background: "rgba(255,255,255,.3)" }
+      }
     >
-      {image && <img src={image} alt={name} className="h-full w-full object-cover" />}
-    </div>
-    <p
-      className="absolute bottom-[4px] left-0 right-0 flex items-center justify-center gap-1 truncate px-2 font-bold"
-      style={{ color: SITE.label, fontSize: mobile ? 11 : 15 }}
-    >
-      <span className="truncate">{name || "—"}</span>
-      {hot && (
-        <span className="shrink-0 rounded bg-orange-500 px-1 text-[9px] font-black text-white">গরম</span>
-      )}
-    </p>
+      <Heart className={mobile ? "h-5 w-5" : "h-4 w-4"} />
+    </span>
+    {mobile && vendorLogo && (
+      <div
+        className="absolute bottom-0 left-0 right-0 flex justify-center pt-[17px]"
+        style={{ height: 44, background: `linear-gradient(rgba(0,62,62,0), ${SITE.page})` }}
+      >
+        <img src={vendorLogo} alt="" className="h-[22px] w-[44px] object-contain" />
+      </div>
+    )}
   </div>
 );

@@ -24,7 +24,7 @@ import {
 
 const router = express.Router();
 
-const PROVIDER_POPULATE = { path: "providerDbId", select: "providerCode displayName" };
+const PROVIDER_POPULATE = { path: "providerDbId", select: "providerCode displayName mobLogo" };
 const CATEGORY_POPULATE = { path: "categoryId", select: "name key" };
 
 // Two admin-picked lists work the same way: HOT and Favorites

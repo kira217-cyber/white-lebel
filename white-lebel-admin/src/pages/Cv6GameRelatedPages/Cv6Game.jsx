@@ -688,12 +688,17 @@ const GameEditor = ({ game, provider, total, onClose, onSaved }) => {
           <p className="mb-3 text-xs font-black text-slate-300">Site preview</p>
           <div className="flex flex-wrap gap-5">
             <div>
-              <p className="mb-1.5 text-[11px] text-slate-500">Desktop</p>
-              <GameCardPreview image={shown} name={nameBn || game.name} badge={provider?.displayName} hot={isHot} />
+              <p className="mb-1.5 text-[11px] text-slate-300">Desktop</p>
+              <GameCardPreview image={shown} name={nameBn || game.name} />
             </div>
             <div>
-              <p className="mb-1.5 text-[11px] text-slate-500">Mobile</p>
-              <GameCardPreview image={shown} name={nameBn || game.name} badge={provider?.displayName} hot={isHot} mobile />
+              <p className="mb-1.5 text-[11px] text-slate-300">Mobile</p>
+              <GameCardPreview
+                image={shown}
+                name={nameBn || game.name}
+                vendorLogo={provider?.mobLogoUrl || game.provider?.mobLogoUrl}
+                mobile
+              />
             </div>
           </div>
         </div>

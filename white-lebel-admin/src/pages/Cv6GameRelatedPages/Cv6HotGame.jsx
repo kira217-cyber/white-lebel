@@ -36,9 +36,10 @@ import {
 
 const BASE = "/api/master/cv6-games";
 
-// হোমের "গরম খেলা": ডেস্কটপে প্রথম ১২টা, মোবাইলে প্রথম ৯টা চোখে পড়ে
-const DESK_FIRST = 12;
-const MOB_FIRST = 9;
+// হোমের "গরম খেলা" দুই সারিতে, কলাম ধরে ভরে: ডেস্কটপে ৫ কলাম (১০টা),
+// মোবাইলে ৩ কলাম (৬টা) চোখে পড়ে — বাকিগুলো তীর/সরিয়ে
+const DESK_FIRST = 10;
+const MOB_FIRST = 6;
 
 /* এক পাতায় দুই তালিকা — HOT আর Favorite (আমার প্রিয়) একই নিয়মে চলে */
 const LIST_UI = {
@@ -146,14 +147,24 @@ const Cv6HotGame = ({ list = "hot" }) => {
           <div className="space-y-4 rounded-3xl p-4" style={{ background: SITE.page }}>
             {games.length ? (
               <>
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {games.slice(0, DESK_FIRST).map((game) => (
-                    <GameCardPreview key={game._id} image={game.imageUrl} name={title(game)} badge={badge(game)} />
-                  ))}
+                <p className="text-[11px] text-slate-300">ডেস্কটপ</p>
+                <div className="overflow-x-auto pb-2">
+                  <div className="grid w-max grid-flow-col grid-rows-2 gap-x-5 gap-y-3">
+                    {games.slice(0, DESK_FIRST).map((game) => (
+                      <GameCardPreview key={game._id} image={game.imageUrl} name={title(game)} />
+                    ))}
+                  </div>
                 </div>
-                <div className="grid w-fit grid-cols-3 gap-2">
+                <p className="text-[11px] text-slate-300">মোবাইল</p>
+                <div className="grid w-max grid-flow-col grid-rows-2 gap-[7px]">
                   {games.slice(0, MOB_FIRST).map((game) => (
-                    <GameCardPreview key={game._id} image={game.imageUrl} name={title(game)} badge={badge(game)} hot mobile />
+                    <GameCardPreview
+                      key={game._id}
+                      image={game.imageUrl}
+                      name={title(game)}
+                      vendorLogo={game.provider?.mobLogoUrl}
+                      mobile
+                    />
                   ))}
                 </div>
               </>
@@ -549,8 +560,8 @@ const HotEditor = ({ list, game, total, onClose, onSaved }) => {
         <div className="rounded-3xl border border-white/10 p-4" style={{ background: SITE.page }}>
           <p className="mb-3 text-xs font-black text-slate-300">Site preview</p>
           <div className="flex flex-wrap gap-5">
-            <GameCardPreview image={game.imageUrl} name={nameBn || game.name} badge={badge(game)} />
-            <GameCardPreview image={game.imageUrl} name={nameBn || game.name} badge={badge(game)} hot mobile />
+            <GameCardPreview image={game.imageUrl} name={nameBn || game.name} />
+            <GameCardPreview image={game.imageUrl} name={nameBn || game.name} vendorLogo={game.provider?.mobLogoUrl} mobile />
           </div>
         </div>
       </div>

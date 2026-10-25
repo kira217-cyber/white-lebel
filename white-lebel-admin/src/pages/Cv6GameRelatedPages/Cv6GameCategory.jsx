@@ -16,13 +16,14 @@ import {
 import { toast } from "react-toastify";
 import { api } from "../../api/axios";
 import {
-  DeskTabPreview,
+  DeskCatPreview,
+  DeskSideTilePreview,
   Empty,
-  HomeCardPreview,
   ImageDrop,
-  MobTabPreview,
+  MobDrawerPreview,
+  MobMenuPreview,
   PageHeader,
-  SectionTitlePreview,
+  SiteIcon,
   SortableList,
   Spinner,
   Toggle,
@@ -98,9 +99,17 @@ const emptyForm = {
 };
 
 const ICONS = [
-  { field: "deskIcon", label: "Desktop nav icon", size: "25 × 25 সাদা PNG — হেডারের নিচের ধূসর বারে" },
-  { field: "mobIcon", label: "Mobile tab icon", size: "56 × 56 সাদা PNG — মোবাইলের ধূসর ট্যাব সারিতে" },
-  { field: "titleIcon", label: "Hot section icon", size: "36 × 36 PNG — \"হট সুপারিশ\" শিরোনামের বাঁয়ে" },
+  {
+    field: "deskIcon",
+    label: "Desktop icon",
+    size: "SVG (এক রঙের) — হোমের ক্যাটাগরি সারিতে ২৮ আর বাঁয়ের বারে ৩০ মাপে; সাইট লেখার রঙে আঁকে। PNG দিলে যেমন আছে তেমন",
+  },
+  {
+    field: "mobIcon",
+    label: "Mobile icon",
+    size: "SVG (এক রঙের) — মোবাইল হোমের মেনু সারি আর পাশের ড্রয়ারে ২৪ মাপে। খালি = Desktop icon",
+  },
+  { field: "titleIcon", label: "Hot section icon", size: "CV666 সাইটে ব্যবহার হয় না" },
 ];
 
 const BANNER = {
@@ -182,6 +191,15 @@ const Cv6GameCategory = () => {
       Object.values(previews).forEach((url) => url?.startsWith("blob:") && URL.revokeObjectURL(url)),
     [previews],
   );
+
+  // A picked file's blob: URL has no extension — tell the look-alikes when it is an SVG.
+  const svgPicked = {
+    deskIcon: form.deskIcon instanceof File ? form.deskIcon.type === "image/svg+xml" : undefined,
+    mobIcon: form.mobIcon instanceof File ? form.mobIcon.type === "image/svg+xml" : undefined,
+  };
+  // The site falls back to the desktop icon when there is no mobile one.
+  const mobIcon = previews.mobIcon || previews.deskIcon;
+  const mobSvg = previews.mobIcon ? svgPicked.mobIcon : svgPicked.deskIcon;
 
   const resetForm = () => {
     setForm(emptyForm);
@@ -629,37 +647,31 @@ const Cv6GameCategory = () => {
           <p className="mt-1 text-sm text-slate-400">সাইটে ঠিক এভাবে দেখাবে।</p>
 
           <div className="mt-5 space-y-4">
-            <PreviewBox title="Desktop — nav bar" icon={Monitor} off={!form.showOnDesktop}>
-              <div className="flex">
-                <DeskTabPreview icon={previews.deskIcon} label={form.nameBn} active />
-                <DeskTabPreview icon={previews.deskIcon} label={form.nameBn} />
+            <PreviewBox title="Desktop home — category row" icon={Monitor} off={!form.showOnDesktop}>
+              <div className="flex gap-[10px]">
+                <DeskCatPreview icon={previews.deskIcon} svg={svgPicked.deskIcon} label={form.nameBn} />
+                <DeskCatPreview icon={previews.deskIcon} svg={svgPicked.deskIcon} label={form.nameBn} active />
               </div>
-              <p className="mt-2 text-[11px] text-slate-500">বাঁয়ে সক্রিয়, ডানে সাধারণ অবস্থা</p>
+              <p className="mt-2 text-[11px] text-slate-400">বাঁয়ে সাধারণ, ডানে mouse রাখলে</p>
             </PreviewBox>
 
-            <PreviewBox title="Mobile — tab row" icon={Smartphone} off={!form.showOnMobile}>
+            <PreviewBox title="Desktop — left bar" icon={Monitor} off={!form.showOnDesktop}>
+              <div className="flex gap-[10px]">
+                <DeskSideTilePreview icon={previews.deskIcon} svg={svgPicked.deskIcon} label={form.nameBn} />
+                <DeskSideTilePreview icon={previews.deskIcon} svg={svgPicked.deskIcon} label={form.nameBn} active />
+              </div>
+            </PreviewBox>
+
+            <PreviewBox title="Mobile home — game menu" icon={Smartphone} off={!form.showOnMobile}>
               <div className="flex gap-[7px]">
-                <MobTabPreview icon={previews.mobIcon} label={form.mobNameBn || form.nameBn} active />
-                <MobTabPreview icon={previews.mobIcon} label={form.mobNameBn || form.nameBn} />
+                <MobMenuPreview icon={mobIcon} svg={mobSvg} label={form.mobNameBn || form.nameBn} active />
+                <MobMenuPreview icon={mobIcon} svg={mobSvg} label={form.mobNameBn || form.nameBn} />
               </div>
+              <p className="mt-2 text-[11px] text-slate-400">বাঁয়ে চালু (খেলার কেন্দ্রে), ডানে সাধারণ</p>
             </PreviewBox>
 
-            {form.homeCard !== "none" && (
-              <PreviewBox title="Desktop home — provider list" icon={LayoutGrid}>
-                <HomeCardPreview
-                  banner={previews.homeBanner}
-                  label={form.nameBn}
-                  size={form.homeCard}
-                  logos={editing?.cardLogos || []}
-                />
-                <p className="mt-2 text-[11px] text-slate-500">
-                  অর্ধেক মাপে। লোগো আসে Add Provider এর ক্রমে প্রথম ৪টা থেকে।
-                </p>
-              </PreviewBox>
-            )}
-
-            <PreviewBox title="Desktop home — hot section title" icon={Flame} off={!form.showHotSection}>
-              <SectionTitlePreview icon={previews.titleIcon} label={form.hotTitleBn || form.nameBn} />
+            <PreviewBox title="Mobile — side drawer" icon={Smartphone} off={!form.showOnMobile}>
+              <MobDrawerPreview icon={mobIcon} svg={mobSvg} label={form.nameBn} />
             </PreviewBox>
           </div>
         </div>
@@ -721,13 +733,13 @@ const Cv6GameCategory = () => {
                     <div
                       key={field}
                       className="flex h-11 w-11 items-center justify-center rounded-xl"
-                      style={{ background: SITE.page }}
+                      style={{ background: SITE.tile2, color: SITE.text }}
                       title={field === "deskIconUrl" ? "Desktop icon" : "Mobile icon"}
                     >
                       {cat[field] ? (
-                        <img src={cat[field]} alt="" className="h-9 w-9 object-contain" />
+                        <SiteIcon src={cat[field]} size={26} />
                       ) : (
-                        <span className="text-[9px] text-slate-600">none</span>
+                        <span className="text-[9px] opacity-50">none</span>
                       )}
                     </div>
                   ))}
@@ -793,8 +805,8 @@ const PreviewBox = ({ title, icon, off, children }) => {
   const Icon = icon;
   return (
   <div className="rounded-3xl border border-white/10 p-4" style={{ background: SITE.page }}>
-    <p className="mb-3 flex items-center gap-2 text-xs font-black text-slate-600">
-      <Icon className="h-4 w-4 text-sky-500" /> {title}
+    <p className="mb-3 flex items-center gap-2 text-xs font-black text-slate-300">
+      <Icon className="h-4 w-4 text-emerald-300" /> {title}
       {off && <span className="rounded-md bg-red-500/20 px-1.5 py-0.5 text-[10px] text-red-200">hidden</span>}
     </p>
     <div className={off ? "opacity-30" : ""}>{children}</div>

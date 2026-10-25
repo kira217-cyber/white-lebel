@@ -287,6 +287,8 @@ export const formatGame = (req, item) => {
           id: String(provider._id),
           providerCode: provider.providerCode,
           displayName: provider.displayName || provider.providerCode,
+          // white logo under the mobile game card (admin previews)
+          mobLogoUrl: buildFileUrl(req, provider.mobLogo),
         }
       : undefined,
     customImageUrl,

@@ -15,11 +15,12 @@ import {
 import { toast } from "react-toastify";
 import { api } from "../../api/axios";
 import {
-  DeskChipPreview,
+  ChipPreview,
   Empty,
+  FooterLogoPreview,
   GameCardPreview,
   ImageDrop,
-  MobRailPreview,
+  LobbyCardPreview,
   PageHeader,
   SortableList,
   Spinner,
@@ -251,8 +252,8 @@ const Cv6GameProvider = () => {
                     {handle}
                     <span className="w-6 shrink-0 text-center text-sm font-black text-slate-500">{index + 1}</span>
 
-                    <div className="shrink-0 rounded-xl p-1.5" style={{ background: SITE.page }}>
-                      <DeskChipPreview icon={provider.iconUrl} name={provider.displayName} />
+                    <div className="shrink-0 rounded-xl p-1.5" style={{ background: SITE.page }} title="খেলার কেন্দ্রের চিপ">
+                      <ChipPreview logo={provider.mobLogoUrl} name={provider.displayName} />
                     </div>
 
                     <div className="min-w-0 flex-1">
@@ -486,8 +487,8 @@ const ProviderEditor = ({ provider, onClose, onSaved }) => {
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-5">
             <ImageDrop
-              label="Logo (wide wordmark)"
-              size="240 × 120 PNG, transparent — গেম কার্ড আর খেলার কেন্দ্রে, হালকা ব্যাকগ্রাউন্ডে বসবে"
+              label="Logo"
+              size="PNG, স্বচ্ছ — Home card logo না থাকলে ফুটারের লোগো সারিতে আর lobby ছবিহীন কার্ডে। খালি = Oracle এর আইকন"
               preview={logoPreview}
               tall="h-32"
               onPick={(file) => {
@@ -502,7 +503,7 @@ const ProviderEditor = ({ provider, onClose, onSaved }) => {
 
             <ImageDrop
               label="Home card logo (colour)"
-              size="120 × 60 PNG — হোমের সরবরাহকারীর তালিকার কার্ডে। খালি = উপরের লোগো"
+              size="600 × 300 PNG, রঙিন — ফুটারের প্রোভাইডার সারিতে (৭০ × ৩৫) আর lobby ছবিহীন কার্ডে। খালি = উপরের লোগো"
               preview={cardPreview}
               tall="h-24"
               onPick={(file) => {
@@ -516,8 +517,8 @@ const ProviderEditor = ({ provider, onClose, onSaved }) => {
             />
 
             <ImageDrop
-              label="Mobile game card logo"
-              size="200 × 100 PNG — মোবাইল হোমের গেম কার্ডে, বাঁয়ে (মূল সাইটের TCG লোগো)। খালি = হোম কার্ডের লোগো"
+              label="White logo (chips + mobile cards)"
+              size="600 × 300 PNG, সাদা — খেলার কেন্দ্রের প্রোভাইডার চিপে আর মোবাইল গেম কার্ডের নিচে। খালি = চিপে নাম"
               preview={mobLogoPreview}
               tall="h-24"
               onPick={(file) => {
@@ -531,8 +532,8 @@ const ProviderEditor = ({ provider, onClose, onSaved }) => {
             />
 
             <ImageDrop
-              label="Lobby card (game center)"
-              size="540 × 320 — ক্যাসিনো/স্পোর্টসের মতো প্রোভাইডার-কার্ডের পাতায় (মূল সাইটের bigImage)"
+              label="Lobby card (live / sports)"
+              size="৩২০ × ৪৩২ খাড়া ছবি — লাইভ/স্পোর্টসের প্রোভাইডার কার্ডে (ডেস্কটপ ১৬০ × ২১৯, মোবাইল ১২৫ × ১৬৮)"
               preview={lobbyPreview}
               tall="h-28"
               onPick={(file) => {
@@ -562,29 +563,38 @@ const ProviderEditor = ({ provider, onClose, onSaved }) => {
           </div>
 
           <div className="space-y-4 rounded-3xl border border-white/10 p-4" style={{ background: SITE.page }}>
-            <p className="text-xs font-black text-slate-600">Preview</p>
+            <p className="text-xs font-black text-slate-300">Preview</p>
 
             <div>
-              <p className="mb-1.5 text-[11px] text-slate-500">Desktop — home provider-list card</p>
-              <div className="flex gap-2">
-                <DeskChipPreview icon={shownCard} name={displayName} />
+              <p className="mb-1.5 text-[11px] text-slate-300">খেলার কেন্দ্র — প্রোভাইডার চিপ (ডেস্কটপ, তারপর মোবাইল)</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <ChipPreview all />
+                <ChipPreview logo={mobLogoPreview} name={displayName} />
+                <ChipPreview logo={mobLogoPreview} name={displayName} active />
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-[7px]">
+                <ChipPreview all mobile />
+                <ChipPreview logo={mobLogoPreview} name={displayName} mobile />
+                <ChipPreview logo={mobLogoPreview} name={displayName} active mobile />
               </div>
             </div>
 
             <div>
-              <p className="mb-1.5 text-[11px] text-slate-500">Mobile — game center provider column</p>
-              <div className="flex gap-2">
-                <MobRailPreview icon={shownIcon} name={displayName} />
-                <MobRailPreview icon={shownIcon} name={displayName} active />
+              <p className="mb-1.5 text-[11px] text-slate-300">লাইভ / স্পোর্টস — প্রোভাইডার কার্ড (ডেস্কটপ, মোবাইল)</p>
+              <div className="flex flex-wrap items-end gap-3">
+                <LobbyCardPreview image={lobbyPreview} logo={shownCard} name={displayName} />
+                <LobbyCardPreview image={lobbyPreview} logo={shownCard} name={displayName} mobile />
               </div>
             </div>
 
             <div>
-              <p className="mb-1.5 text-[11px] text-slate-500">Game card — desktop and mobile</p>
-              <div className="flex flex-wrap gap-3">
-                <GameCardPreview logo={logoPreview} badge={displayName} name="Game name" />
-                <GameCardPreview logo={logoPreview} badge={displayName} name="Game name" mobile />
-              </div>
+              <p className="mb-1.5 text-[11px] text-slate-300">মোবাইল গেম কার্ড — নিচে সাদা লোগো</p>
+              <GameCardPreview name="Game name" vendorLogo={mobLogoPreview} mobile />
+            </div>
+
+            <div>
+              <p className="mb-1.5 text-[11px] text-slate-300">ডেস্কটপ ফুটার — প্রোভাইডারের সারি</p>
+              <FooterLogoPreview logo={shownCard} name={displayName} />
             </div>
           </div>
         </div>
