@@ -3,3 +3,6 @@
 white-lebel-admin/.env.production
 .env.production
 *.log
+
+# লাইভে তোলার জন্য বানানো ফোল্ডার — build আর ছবির কপি, git এ নয়
+Deploy/
